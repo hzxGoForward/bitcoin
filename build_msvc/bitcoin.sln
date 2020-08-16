@@ -44,6 +44,11 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "libbitcoin_qt", "libbitcoin
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "bitcoin-qt", "bitcoin-qt\bitcoin-qt.vcxproj", "{7E99172D-7FF2-4CB6-B736-AC9B76ED412A}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{FB5AFA10-1A3B-4D7F-ACC0-52411D2537D4}"
+	ProjectSection(SolutionItems) = preProject
+		..\src\hzxLog.h = ..\src\hzxLog.h
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -225,7 +230,7 @@ Global
 		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
-		        SolutionGuid = {8AA72EDA-2CD4-4564-B1E4-688B760EEEE9}
 		SolutionGuid = {65767EAC-3D1F-4975-85AA-9F3DDF99BF31}
+		        SolutionGuid = {8AA72EDA-2CD4-4564-B1E4-688B760EEEE9}
 	EndGlobalSection
 EndGlobal

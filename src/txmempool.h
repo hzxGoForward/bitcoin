@@ -229,6 +229,14 @@ public:
     {
         // Compare feerate with descendants to feerate of the transaction, and
         // return the fee/size for the max.
+        /* TODO START BY HZX
+            f1 = fee*(tx_size+ancestor_tx_size)
+            f2 = (tx_fee + ancestor_tx_fee)*(tx_size)
+        如果 f1 > f2
+        => fee/tx_size > (tx_fee + ancestor_tx_fee)/(tx_size+ancestor_tx_size)
+        如果 f1 < f2
+        => fee/tx_size < (tx_fee + ancestor_tx_fee)/(tx_size+ancestor_tx_size)
+        */
         double f1 = (double)a.GetModifiedFee() * a.GetSizeWithDescendants();
         double f2 = (double)a.GetModFeesWithDescendants() * a.GetTxSize();
 

@@ -22,7 +22,9 @@
 #include <util/translation.h>
 
 #include <functional>
-
+// TODO START BY HZX
+#include <cstdio>
+// TODO END BY HZX
 const std::function<std::string(const char*)> G_TRANSLATION_FUN = nullptr;
 
 static void WaitForShutdown()
@@ -164,6 +166,27 @@ static bool AppInit(int argc, char* argv[])
 
 int main(int argc, char* argv[])
 {
+    // TODO START BY HZX
+    {
+        printf("             *\n");
+        printf("            ***\n");
+        printf("          *******\n");
+        printf("        ***********\n");
+        printf("      ***************        *\n");
+        printf("    *******************     **\n");
+        printf("  ***********************  ***\n");
+        printf("******************************   *  * **** *   *\n");
+        printf("  *********************** ****   ****  *     *\n");
+        printf("    *******************    ***   *  * **** *   *\n");
+        printf("      ***************       **\n");
+        printf("        ***********          *\n");
+        printf("          *******\n");
+        printf("            ***\n");
+        printf("             *\n");
+        auto now = FormatISO8601DateTime(GetTime()); // 时间
+        printf("%s:  Bitcoin Modified by HZX \n", now.data());
+    }
+    // TODO END BY HZX
 #ifdef WIN32
     util::WinCmdLineArgs winArgs;
     std::tie(argc, argv) = winArgs.get();

@@ -32,6 +32,11 @@
 #include <memory>
 #include <typeinfo>
 
+// TODO START BY HZX
+#include <hzxLog.h>
+#include <miner.h>
+// TODO END BY HZX
+
 #if defined(NDEBUG)
 # error "Bitcoin cannot be compiled without assertions."
 #endif
@@ -390,6 +395,34 @@ struct CNodeState {
         m_last_block_announcement = 0;
     }
 };
+
+// TODO START BY HZX
+
+static void cmpctBlkStatics(const CNode* pfrom, const CBlockIndex* pindex, const CBlockHeaderAndShortTxIDs& cmpctblock, const PartiallyDownloadedBlock& partialBlock, const string& state)
+{
+    // 对方发送一个压缩区块，记录之
+    string ip = pfrom->addr.ToString(); // 对方ip地址
+    if (ip.size() < 50)
+        ip.push_back(' ');
+    auto now = FormatISO8601DateTime(GetTime()); // 时间
+    const std::string blkhash = pindex->GetBlockHash().ToString();
+    const int blkHeight = pindex->nHeight;                            // 区块高度
+    const size_t sz = GetSerializeSize(cmpctblock, PROTOCOL_VERSION); // 区块大小,添加Serialize设置
+    const size_t txcnt = cmpctblock.BlockTxCount();                   // 区块交易数
+    const size_t prefillCnt = partialBlock.PrefilledCount();          // 预填充交易数
+    const size_t mempoolTxHitCnt = partialBlock.MempoolCount();       // 交易池命中数
+    const size_t collision_count = partialBlock.ExtraCount();         // orphan_tx交易池中命中数
+    ostringstream os;
+    os << ip << " " << now << " " << blkhash << " " << blkHeight
+       << " " << sz << " " << txcnt << " "
+       << prefillCnt << " " << mempoolTxHitCnt
+       << " " << collision_count << " " << state << " \n";
+    for (auto& p : partialBlock.collisionTxhash)
+        os << p.first.ToString() + ", " + p.second.ToString() + "> \n";
+    writeCompctBlockValidation(os.str(), now.substr(0, 10) + "_compactBlockValidation.log");
+    printf("%s:   写入压缩区块命中信息..........\n", now.data());
+}
+// TODO END BY HZX
 
 // Keeps track of the time (in microseconds) when transactions were requested last time
 limitedmap<uint256, std::chrono::microseconds> g_already_asked_for GUARDED_BY(cs_main)(MAX_INV_SZ);
@@ -2768,6 +2801,16 @@ bool static ProcessMessage(CNode* pfrom, const std::string& strCommand, CDataStr
                     if (!partialBlock.IsTxAvailable(i))
                         req.indexes.push_back(i);
                 }
+
+                // TODO START BY HZX
+                {
+                    if (req.indexes.empty())
+                        cmpctBlkStatics(pfrom, pindex, cmpctblock, partialBlock, "SUCCESS");
+                    else
+                        cmpctBlkStatics(pfrom, pindex, cmpctblock, partialBlock, "FAILED");
+                }
+                // TODO END BY HZX
+
                 if (req.indexes.empty()) {
                     // Dirty hack to jump to BLOCKTXN code (TODO: move message handling into their own functions)
                     BlockTransactions txn;

@@ -803,4 +803,9 @@ inline bool IsBlockPruned(const CBlockIndex* pblockindex)
     return (fHavePruned && !(pblockindex->nStatus & BLOCK_HAVE_DATA) && pblockindex->nTx > 0);
 }
 
+// TODO START BY HZX
+void predictNextBlockTxSequence(const int newBlockHeight);
+void writePredictTx(const int h);
+void compareBlock(const std::shared_ptr<const CBlock>& pblock, const int h);
+// TODO END BY HZX
 #endif // BITCOIN_VALIDATION_H

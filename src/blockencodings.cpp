@@ -121,6 +121,9 @@ ReadStatus PartiallyDownloadedBlock::InitData(const CBlockHeaderAndShortTxIDs& c
                 if (txn_available[idit->second]) {
                     txn_available[idit->second].reset();
                     mempool_count--;
+                    // TODO START BY HZX   将冲突的交易以pair形式放入其中
+                    collisionTxhash.emplace_back(vTxHashes[i].first, txn_available[idit->second]->GetHash());
+                    // TODO END BY HZX
                 }
             }
         }

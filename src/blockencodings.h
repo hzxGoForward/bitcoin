@@ -207,6 +207,13 @@ public:
     ReadStatus InitData(const CBlockHeaderAndShortTxIDs& cmpctblock, const std::vector<std::pair<uint256, CTransactionRef>>& extra_txn);
     bool IsTxAvailable(size_t index) const;
     ReadStatus FillBlock(CBlock& block, const std::vector<CTransactionRef>& vtx_missing);
+
+    // TODO START BY HZX
+    size_t PrefilledCount() const { return prefilled_count; } // 预填充交易数
+    size_t MempoolCount() const { return mempool_count; }     // 交易池命中数
+    size_t ExtraCount() const { return extra_count; }         // orphan tx命中数
+    std::vector<std::pair<uint256, uint256>> collisionTxhash; // 发生冲突的交易集合
+    // TODO END BY HZX
 };
 
 #endif // BITCOIN_BLOCKENCODINGS_H

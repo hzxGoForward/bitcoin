@@ -17,6 +17,11 @@
 #include <boost/multi_index_container.hpp>
 #include <boost/multi_index/ordered_index.hpp>
 
+// TODO START BY HZX
+#include <set>
+#include <uint256.h>
+// TODO END BY HZX
+
 class CBlockIndex;
 class CChainParams;
 class CScript;
@@ -163,6 +168,17 @@ public:
 
     static Optional<int64_t> m_last_block_num_txs;
     static Optional<int64_t> m_last_block_weight;
+    // TODO START BY HZX
+    // 预测区块中最后一个添加的交易的费率
+    double lastTxFeeRate;
+    /** 利用在minIndex和maxIndex范围之间生成新的预测区块 */
+    std::unique_ptr<CBlockTemplate> CreateNewBlock_hzx(const CScript& scriptPubKeyIn, const std::set<uint256>& mappredictBlkTxInfo, const uint256& txid_tail);
+
+    void addPackageTxs_hzx(int& nPackagesSelected, int& nDescendantsUpdated, const std::set<uint256>& mappredictBlkTxInfo, const uint256& txid_tail) EXCLUSIVE_LOCKS_REQUIRED(mempool.cs);
+
+    CAmount getNFee() { return nFees; }
+    void addBlockWeight(const int w) { nBlockMaxWeight += w; }
+    // TODO END BY HZX
 
 private:
     // utility functions
