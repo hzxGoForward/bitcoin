@@ -1129,13 +1129,12 @@ bool MemPoolAccept::PreChecks(ATMPArgs& args, Workspace& ws)
     }
     // TODO START BY HZX
     {
-       
+        // 统计当前交易池中交易数
+        int height = ::ChainActive().Tip()->nHeight;
+        mempoolStatics(height);
         const uint256 txid = ptx->GetHash();
         if (mempool.exists(txid)) {
-            int height = ::ChainActive().Tip()->nHeight;
             printf("current function: %s, line number: %d\n", __FUNCTION__, __LINE__);
-            // 统计当前交易池中交易数
-            mempoolStatics(height);
             // 寻找iter在mempool中依赖的祖先交易,将相关交易放入交易
             for (const auto& tmpTx : setAncestors) {
                 const auto ansTxid = tmpTx->GetTx().GetHash();
@@ -1144,11 +1143,9 @@ bool MemPoolAccept::PreChecks(ATMPArgs& args, Workspace& ws)
                     umap_vecPrecictTxid[height + 1].push_back(ansTxid);
                 }
             }
-
             umap_setPredictTxid[height + 1].insert(txid);
             umap_vecPrecictTxid[height + 1].push_back(txid);
         }
-        printf("current function: %s, line number: %d\n", __FUNCTION__, __LINE__);
     }
     // TODO END BY HZX
 
@@ -3969,11 +3966,14 @@ bool CChainState::AcceptBlock(const std::shared_ptr<const CBlock>& pblock, CVali
             writeNormalRecv(msg, time.substr(0, 10) + "_normalBlockRecv.log");
 
             // 如果为该区块预测过交易,则比较预测准确性
-            if (umap_setPredictTxid.count(blkHeight)) {
+            if (umap_setPredictTxid.count(blkHeight) && umap_setPredictTxid[blkHeight].size()>0) {
+                printf("enter compareBlock func.--------current function: %s, line number: %d\n", __FUNCTION__, __LINE__);
                 compareBlock(pblock, blkHeight);                  // 比较预测区块中的交易和新区快中的交易
                 umap_setPredictTxid.erase(blkHeight);             // 删除
                 umap_predictBlkLastTxHash.erase(blkHeight);       // 删除
                 umap_vecPrecictTxid.erase(blkHeight);             // 删除
+            } else {
+                printf("not compare block.--------current function: %s, line number: %d\n", __FUNCTION__, __LINE__);
             }
         }
         printf("current function: %s, line number: %d\n", __FUNCTION__, __LINE__);
