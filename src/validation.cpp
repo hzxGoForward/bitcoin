@@ -3942,7 +3942,7 @@ bool CChainState::AcceptBlock(const std::shared_ptr<const CBlock>& pblock, CVali
     // and unrequested blocks.
     if (fAlreadyHave) return true;
 
-        // TODO START BY HZX
+    // TODO START BY HZX
     // 如果处于非下载状态，并且当前区块是最长合法的区块，判断该区块中交易，本地交易池已有的比例
     {
         printf("current function: %s, line number: %d\n", __FUNCTION__, __LINE__);
@@ -3964,19 +3964,19 @@ bool CChainState::AcceptBlock(const std::shared_ptr<const CBlock>& pblock, CVali
                               std::to_string(noExistCnt) + "  " + std::to_string(curtipHeight) + "\n\n";
             // printf("收到新区快:%s", msg.data());
             writeNormalRecv(msg, time.substr(0, 10) + "_normalBlockRecv.log");
-
+            printf("detect whether predict %d block \n", blkHeight);
             // 如果为该区块预测过交易,则比较预测准确性
-            if (umap_setPredictTxid.count(blkHeight) && umap_setPredictTxid[blkHeight].size()>0) {
-                printf("enter compareBlock func.--------current function: %s, line number: %d\n", __FUNCTION__, __LINE__);
+            if (umap_predictBlkLastTxHash.count(blkHeight)) {
+                printf("predicted block for %d, ------current function: %s, line number: %d\n",blkHeight,  __FUNCTION__, __LINE__);
                 compareBlock(pblock, blkHeight);                  // 比较预测区块中的交易和新区快中的交易
                 umap_setPredictTxid.erase(blkHeight);             // 删除
                 umap_predictBlkLastTxHash.erase(blkHeight);       // 删除
                 umap_vecPrecictTxid.erase(blkHeight);             // 删除
             } else {
-                printf("not compare block.--------current function: %s, line number: %d\n", __FUNCTION__, __LINE__);
+                printf("not predicted block for %d ,current function: %s, line number: %d\n", blkHeight, __FUNCTION__, __LINE__);
             }
         }
-        printf("current function: %s, line number: %d\n", __FUNCTION__, __LINE__);
+        
     }
     // TODO END BY HZX
 
@@ -4024,7 +4024,7 @@ bool CChainState::AcceptBlock(const std::shared_ptr<const CBlock>& pblock, CVali
     FlushStateToDisk(chainparams, state, FlushStateMode::NONE);
 
     CheckBlockIndex(chainparams.GetConsensus());
-
+    printf("current function: %s, line number: %d\n", __FUNCTION__, __LINE__);
     return true;
 }
 

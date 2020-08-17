@@ -34,7 +34,7 @@ static void writeFile(const string& filename, const string& msg)
     } else {
         cout << "打开文件失败, 文件名： " << filepath << endl;
     }
-    cout << "成功写入..." << filepath << endl;
+    // cout << "成功写入..." << filepath << endl;
 }
 
 // hzx 压缩区块验证情况
