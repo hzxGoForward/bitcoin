@@ -1142,7 +1142,7 @@ bool MemPoolAccept::PreChecks(ATMPArgs& args, Workspace& ws)
         string exists = "false";
         if (mempool.exists(txid))
             exists = "true";
-        printf("statics mempool insert %s, exists: %s,  %s, line number: %d\n", txid.ToString().data(), exists.data(),  __FUNCTION__, __LINE__);
+        // printf("statics mempool insert %s, exists: %s,  %s, line number: %d\n", txid.ToString().data(), exists.data(),  __FUNCTION__, __LINE__);
         // 寻找iter在mempool中依赖的祖先交易,将相关交易放入交易
         for (const auto& tmpTx : setAncestors) {
             const auto& ansTxid = tmpTx->GetTx().GetHash();
