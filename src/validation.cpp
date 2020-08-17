@@ -87,7 +87,7 @@ void predictNextBlockTxSequence(const int newBlockHeight)
     // uint256 witness_program;
     // CSHA256().Write(&op_true[0], op_true.size()).Finalize(witness_program.begin());
     // const CScript SCRIPT_PUB{CScript(OP_0) << std::vector<unsigned char>{witness_program.begin(), witness_program.end()}};
-    printf("当前执行函数: %s, 所在函数: %d\n", __FUNCTION__, __LINE__);
+    printf("current function: %s, line number: %d\n", __FUNCTION__, __LINE__);
     CScript pubKey;
     pubKey << 0 << OP_TRUE;
     BlockAssembler blockAssembler(Params());
@@ -119,13 +119,13 @@ void predictNextBlockTxSequence(const int newBlockHeight)
         umap_predictBlkLastTxHash[newBlockHeight] = {ptemplate->block.vtx.back()->GetHash(), blockAssembler.lastTxFeeRate};
     writeFile(to_string(newBlockHeight) + "_predBlk_first.log", ss.str());
     ss.clear();
-    printf("当前执行函数: %s, 所在函数: %d\n", __FUNCTION__, __LINE__);
+    printf("current function: %s, line number: %d\n", __FUNCTION__, __LINE__);
 }
 
 /// 输出所有纳入预测序列的交易信息
 void writePredictTx(const int h)
 {
-    printf("当前执行函数: %s, 所在函数: %d\n", __FUNCTION__, __LINE__);
+    printf("current function: %s, line number: %d\n", __FUNCTION__, __LINE__);
     ostringstream ss;
     ss << "区块高度: " << h << " \n预测时间: " << FormatISO8601DateTime(GetTime()) << " \n";
     ss << "进入时间  交易哈希    交易费用    交易大小    交易权重    第一次添加 \n";
@@ -146,14 +146,14 @@ void writePredictTx(const int h)
     }
     ss << "交易数量: " << vecTxHash.size() << " \n";
     writeFile(to_string(h) + "_predictTxSequence.log", ss.str());
-    printf("当前执行函数: %s, 所在函数: %d\n", __FUNCTION__, __LINE__);
+    printf("current function: %s, line number: %d\n", __FUNCTION__, __LINE__);
 }
 
 
 /// 将收到的区块和已预测区块中的交易进行比较
 void compareBlock(const std::shared_ptr<const CBlock>& pblock, const int h)
 {
-    printf("当前执行函数: %s, 所在函数: %d\n", __FUNCTION__, __LINE__);
+    printf("current function: %s, line number: %d\n", __FUNCTION__, __LINE__);
     auto now = FormatISO8601DateTime(GetTime());
     // 从pblock交易列表倒序寻找存在于umap_predictBlkTxInfo中的交易id
     uint256 txid_tail;
@@ -274,7 +274,7 @@ void compareBlock(const std::shared_ptr<const CBlock>& pblock, const int h)
     // 清空预测的数据
     ss1.clear();
     ss2.clear();
-    printf("当前执行函数: %s, 所在函数: %d\n", __FUNCTION__, __LINE__);
+    printf("current function: %s, line number: %d\n", __FUNCTION__, __LINE__);
 }
 // TODO END BY HZX
 
@@ -1133,7 +1133,7 @@ bool MemPoolAccept::PreChecks(ATMPArgs& args, Workspace& ws)
         const uint256 txid = ptx->GetHash();
         if (mempool.exists(txid)) {
             int height = ::ChainActive().Tip()->nHeight;
-            printf("当前执行函数: %s, 所在函数: %d\n", __FUNCTION__, __LINE__);
+            printf("current function: %s, line number: %d\n", __FUNCTION__, __LINE__);
             // 统计当前交易池中交易数
             mempoolStatics(height);
             // 寻找iter在mempool中依赖的祖先交易,将相关交易放入交易
@@ -1148,7 +1148,7 @@ bool MemPoolAccept::PreChecks(ATMPArgs& args, Workspace& ws)
             umap_setPredictTxid[height + 1].insert(txid);
             umap_vecPrecictTxid[height + 1].push_back(txid);
         }
-        printf("当前执行函数: %s, 所在函数: %d\n", __FUNCTION__, __LINE__);
+        printf("current function: %s, line number: %d\n", __FUNCTION__, __LINE__);
     }
     // TODO END BY HZX
 
@@ -3948,7 +3948,7 @@ bool CChainState::AcceptBlock(const std::shared_ptr<const CBlock>& pblock, CVali
         // TODO START BY HZX
     // 如果处于非下载状态，并且当前区块是最长合法的区块，判断该区块中交易，本地交易池已有的比例
     {
-        printf("当前执行函数: %s, 所在函数: %d\n", __FUNCTION__, __LINE__);
+        printf("current function: %s, line number: %d\n", __FUNCTION__, __LINE__);
         // 不处于下载状态，收到新区快或者分叉区块，记录之
         if (!IsInitialBlockDownload() && pindex->nHeight >= m_chain.Tip()->nHeight) {
             size_t existCnt = 0;
@@ -3976,7 +3976,7 @@ bool CChainState::AcceptBlock(const std::shared_ptr<const CBlock>& pblock, CVali
                 umap_vecPrecictTxid.erase(blkHeight);             // 删除
             }
         }
-        printf("当前执行函数: %s, 所在函数: %d\n", __FUNCTION__, __LINE__);
+        printf("current function: %s, line number: %d\n", __FUNCTION__, __LINE__);
     }
     // TODO END BY HZX
 
@@ -4062,14 +4062,14 @@ bool ProcessNewBlock(const CChainParams& chainparams, const std::shared_ptr<cons
     // TODO START BY HZX
     {
         if (!::ChainstateActive().IsInitialBlockDownload()) {
-            printf("当前执行函数: %s, 所在函数: %d\n", __FUNCTION__, __LINE__);
+            printf("current function: %s, line number: %d\n", __FUNCTION__, __LINE__);
             int newBlockHeight = ::ChainActive().Tip()->nHeight + 1;
             // 预测下一个区块中的交易
             if (umap_vecPrecictTxid.count(newBlockHeight) == 0) {
                 predictNextBlockTxSequence(newBlockHeight);
             }
         }
-        printf("当前执行函数: %s, 所在函数: %d\n", __FUNCTION__, __LINE__);
+        printf("current function: %s, line number: %d\n", __FUNCTION__, __LINE__);
     }
     // TODO END BY HZX
 
