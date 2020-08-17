@@ -190,8 +190,10 @@ void compareBlock(const std::shared_ptr<const CBlock>& pblock, const int h)
     }
     printf("current function: %s, line number: %d\n", __FUNCTION__, __LINE__);
     ss1 << "预测时间: " << now << " 区块哈希: " << predBlk->block.GetHash().ToString() << " \n";
+    printf("current function: %s, line number: %d\n", __FUNCTION__, __LINE__);
     ss1 << "交易个数: " << predBlk->block.vtx.size() << " \n";
-    ss1 << "区块大小: " << to_string(GetSerializeSize(predBlk->block, PROTOCOL_VERSION)) << "字节 \n";
+    printf("current function: %s, line number: %d\n", __FUNCTION__, __LINE__);
+    ss1 << "区块大小: " << GetSerializeSize(predBlk->block, PROTOCOL_VERSION) << "字节 \n";
     // 再次遍历pblock中每一笔交易，查看是否存在于mapTxidIndex中
     // 哈希值 交易费 交易大小 交易权重 进入交易池时间
     string compare_msg = "";
