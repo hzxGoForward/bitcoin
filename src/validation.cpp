@@ -175,6 +175,7 @@ void compareBlock(const std::shared_ptr<const CBlock>& pblock, const int h)
     // 记录预测交易哈希及其对应的的序号
     map<uint256, int> mapTxidIndex;
     ostringstream ss1;
+    printf("current function: %s, line number: %d\n", __FUNCTION__, __LINE__);
     for (size_t i = 1; i < predBlk->block.vtx.size(); ++i) {
         const auto& txid = predBlk->block.vtx[i]->GetHash();
         mapTxidIndex[txid] = i;
@@ -187,6 +188,7 @@ void compareBlock(const std::shared_ptr<const CBlock>& pblock, const int h)
         CAmount fee = it->GetFee();
         ss1 << entertime << " " << txid.ToString() << " " << i << " " << txSize << " " << txWeight << " " << fee << " \n";
     }
+    printf("current function: %s, line number: %d\n", __FUNCTION__, __LINE__);
     ss1 << "预测时间: " << now << " 区块哈希: " << predBlk->block.GetHash().ToString() << " \n";
     ss1 << "交易个数: " << predBlk->block.vtx.size() << " \n";
     ss1 << "区块大小: " << to_string(GetSerializeSize(predBlk->block, PROTOCOL_VERSION)) << "字节 \n";
@@ -202,6 +204,7 @@ void compareBlock(const std::shared_ptr<const CBlock>& pblock, const int h)
     int firstNumber = -1;                              // pblock第一笔被命中交易的index
     vector<int> hitHash(predBlk->block.vtx.size(), 0); // 表示交易是否被命中，0未命中，1表示命中
     ostringstream tmpSS;
+    printf("current function: %s, line number: %d\n", __FUNCTION__, __LINE__);
     for (size_t i = 0; i < pblock->vtx.size(); ++i) {
         const CTransactionRef& tx = pblock->vtx[i];
         const auto& txid = tx->GetHash(); // 交易哈希
@@ -248,6 +251,7 @@ void compareBlock(const std::shared_ptr<const CBlock>& pblock, const int h)
         ss2 << entertime << " " << txid.ToString() << " " << index << " " << fee << txSize << " " << txWeight << " "
             << " \n";
     }
+    printf("current function: %s, line number: %d\n", __FUNCTION__, __LINE__);
     ss2 << "区块大小: " << GetSerializeSize(pblock, PROTOCOL_VERSION) << "字节 \n";
     ss2 << "接收时间: " << now << " 区块哈希: " << pblock->GetHash().ToString() << " \n";
     ss2 << "交易个数: " << pblock->vtx.size() << " \n";
