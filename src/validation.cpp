@@ -1143,7 +1143,7 @@ bool MemPoolAccept::PreChecks(ATMPArgs& args, Workspace& ws)
             printf("current function: %s, line number: %d\n", __FUNCTION__, __LINE__);
             // 寻找iter在mempool中依赖的祖先交易,将相关交易放入交易
             for (const auto& tmpTx : setAncestors) {
-                const auto ansTxid = tmpTx->GetTx().GetHash();
+                const auto& ansTxid = tmpTx->GetTx().GetHash();
                 if (umap_setPredictTxid[height + 1].count(ansTxid) == 0) {
                     umap_setPredictTxid[height + 1].insert(ansTxid);
                     umap_vecPrecictTxid[height + 1].push_back(ansTxid);
@@ -3952,8 +3952,8 @@ bool CChainState::AcceptBlock(const std::shared_ptr<const CBlock>& pblock, CVali
     // 如果处于非下载状态，并且当前区块是最长合法的区块，判断该区块中交易，本地交易池已有的比例
     {
         printf("current function: %s, line number: %d\n", __FUNCTION__, __LINE__);
-        // 不处于下载状态，收到新区快或者分叉区块，记录之
-        if (!IsInitialBlockDownload() && pindex->nHeight >= m_chain.Tip()->nHeight) {
+        // 不处于下载状态，收到新区快比本地区块的高度之差不超过2
+        if (!IsInitialBlockDownload() && pindex->nHeight - m_chain.Tip()->nHeight <=2 ) {
             size_t existCnt = 0;
             for (auto& tx : pblock->vtx) {
                 if (mempool.exists(tx->GetHash()))
