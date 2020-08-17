@@ -157,8 +157,8 @@ void compareBlock(const std::shared_ptr<const CBlock>& pblock, const int h)
     auto now = FormatISO8601DateTime(GetTime());
     // 从pblock交易列表倒序寻找存在于umap_predictBlkTxInfo中的交易id
     uint256 txid_tail;
-    for (size_t i = pblock->vtx.size() - 1; i > 0; --i) {
-        auto txid = pblock->vtx[i]->GetHash();
+    for (int i = pblock->vtx.size() - 1; i > 0; --i) {
+        const auto& txid = pblock->vtx[i]->GetHash();
         if (umap_setPredictTxid[h].count(txid)) {
             txid_tail = txid;
             break;
@@ -176,7 +176,7 @@ void compareBlock(const std::shared_ptr<const CBlock>& pblock, const int h)
     map<uint256, int> mapTxidIndex;
     ostringstream ss1;
     for (size_t i = 1; i < predBlk->block.vtx.size(); ++i) {
-        auto txid = predBlk->block.vtx[i]->GetHash();
+        const auto& txid = predBlk->block.vtx[i]->GetHash();
         mapTxidIndex[txid] = i;
         auto it = mempool.mapTx.find(txid);
         assert(it != mempool.mapTx.end());
@@ -204,7 +204,7 @@ void compareBlock(const std::shared_ptr<const CBlock>& pblock, const int h)
     ostringstream tmpSS;
     for (size_t i = 0; i < pblock->vtx.size(); ++i) {
         const CTransactionRef& tx = pblock->vtx[i];
-        auto txid = tx->GetHash(); // 交易哈希
+        const auto& txid = tx->GetHash(); // 交易哈希
         string entertime = now;    // 进入交易池时间
         string index = "-111";     // 对应预测区块的序号
         size_t txSize = 0;         // 交易大小

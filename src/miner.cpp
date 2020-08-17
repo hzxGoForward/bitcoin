@@ -630,7 +630,7 @@ std::unique_ptr<CBlockTemplate> BlockAssembler::CreateNewBlock_hzx(const CScript
 
     addPackageTxs_hzx(nPackagesSelected, nDescendantsUpdated, mappredictBlkTxInfo, txid_tail);
 
-    int64_t nTime1 = GetTimeMicros();
+    // int64_t nTime1 = GetTimeMicros();
 
     m_last_block_num_txs = nBlockTx;
     m_last_block_weight = nBlockWeight;
@@ -660,7 +660,7 @@ std::unique_ptr<CBlockTemplate> BlockAssembler::CreateNewBlock_hzx(const CScript
     //if (!TestBlockValidity(state, chainparams, *pblock, pindexPrev, false, false)) {
     //    throw std::runtime_error(strprintf("%s: TestBlockValidity failed: %s", __func__, FormatStateMessage(state)));
     //}
-    int64_t nTime2 = GetTimeMicros();
+    // int64_t nTime2 = GetTimeMicros();
 
     // LogPrint(BCLog::BENCH, "CreateNewBlock() packages: %.2fms (%d packages, %d updated descendants), validity: %.2fms (total %.2fms)\n", 0.001 * (nTime1 - nTimeStart), nPackagesSelected, nDescendantsUpdated, 0.001 * (nTime2 - nTime1), 0.001 * (nTime2 - nTimeStart));
 
