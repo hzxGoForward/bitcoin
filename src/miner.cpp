@@ -460,7 +460,7 @@ void BlockAssembler::addPackageTxs_hzx(int& nPackagesSelected, int& nDescendants
     // mempool has a lot of entries.
     const int64_t MAX_CONSECUTIVE_FAILURES = 1000;
     int64_t nConsecutiveFailed = 0;
-
+    printf("current function: %s, line number: %d\n", __FUNCTION__, __LINE__);
     while (mi != mempool.mapTx.get<ancestor_score>().end() || !mapModifiedTx.empty()) {
         // First try to find a new transaction in mapTx to evaluate.
         if (mi != mempool.mapTx.get<ancestor_score>().end() &&
@@ -627,7 +627,7 @@ std::unique_ptr<CBlockTemplate> BlockAssembler::CreateNewBlock_hzx(const CScript
 
     int nPackagesSelected = 0;
     int nDescendantsUpdated = 0;
-
+    printf("current function: %s, line number: %d\n", __FUNCTION__, __LINE__);
     addPackageTxs_hzx(nPackagesSelected, nDescendantsUpdated, mappredictBlkTxInfo, txid_tail);
 
     int64_t nTime1 = GetTimeMicros();

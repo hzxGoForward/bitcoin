@@ -3972,7 +3972,7 @@ bool CChainState::AcceptBlock(const std::shared_ptr<const CBlock>& pblock, CVali
             writeNormalRecv(msg, time.substr(0, 10) + "_normalBlockRecv.log");
             printf("detect whether predict %d block \n", blkHeight);
             // 如果为该区块预测过交易,则比较预测准确性
-            if (umap_predictBlkLastTxHash.count(blkHeight) && umap_setPredictTxid.count(blkHeight) && umap_vecPrecictTxid.count(blkHeight) {
+            if (umap_predictBlkLastTxHash.count(blkHeight) && umap_setPredictTxid.count(blkHeight) && umap_vecPrecictTxid.count(blkHeight)) {
                 printf("predicted block for %d, ------current function: %s, line number: %d\n",blkHeight,  __FUNCTION__, __LINE__);
                 compareBlock(pblock, blkHeight);                  // 比较预测区块中的交易和新区快中的交易
                 umap_setPredictTxid.erase(blkHeight);             // 删除
