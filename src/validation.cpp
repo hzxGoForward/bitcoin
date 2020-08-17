@@ -1139,19 +1139,20 @@ bool MemPoolAccept::PreChecks(ATMPArgs& args, Workspace& ws)
         int height = ::ChainActive().Tip()->nHeight;
         mempoolStatics(height);
         const uint256 txid = ptx->GetHash();
-        if (mempool.exists(txid)) {
-            printf("current function: %s, line number: %d\n", __FUNCTION__, __LINE__);
-            // 寻找iter在mempool中依赖的祖先交易,将相关交易放入交易
-            for (const auto& tmpTx : setAncestors) {
-                const auto& ansTxid = tmpTx->GetTx().GetHash();
-                if (umap_setPredictTxid[height + 1].count(ansTxid) == 0) {
-                    umap_setPredictTxid[height + 1].insert(ansTxid);
-                    umap_vecPrecictTxid[height + 1].push_back(ansTxid);
-                }
+        string exists = "false";
+        if (mempool.exists(txid))
+            exists = "true";
+        printf("statics mempool insert %s, exists: %s,  %s, line number: %d\n", txid.ToString(), exists.c_str(),  __FUNCTION__, __LINE__);
+        // 寻找iter在mempool中依赖的祖先交易,将相关交易放入交易
+        for (const auto& tmpTx : setAncestors) {
+            const auto& ansTxid = tmpTx->GetTx().GetHash();
+            if (umap_setPredictTxid[height + 1].count(ansTxid) == 0) {
+                umap_setPredictTxid[height + 1].insert(ansTxid);
+                umap_vecPrecictTxid[height + 1].push_back(ansTxid);
             }
-            umap_setPredictTxid[height + 1].insert(txid);
-            umap_vecPrecictTxid[height + 1].push_back(txid);
         }
+        umap_setPredictTxid[height + 1].insert(txid);
+        umap_vecPrecictTxid[height + 1].push_back(txid);
     }
     // TODO END BY HZX
 
