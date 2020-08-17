@@ -1129,10 +1129,11 @@ bool MemPoolAccept::PreChecks(ATMPArgs& args, Workspace& ws)
     }
     // TODO START BY HZX
     {
-        printf("当前执行函数: %s, 所在函数: %d\n", __FUNCTION__, __LINE__);
+       
         const uint256 txid = ptx->GetHash();
         if (mempool.exists(txid)) {
             int height = ::ChainActive().Tip()->nHeight;
+            printf("当前执行函数: %s, 所在函数: %d\n", __FUNCTION__, __LINE__);
             // 统计当前交易池中交易数
             mempoolStatics(height);
             // 寻找iter在mempool中依赖的祖先交易,将相关交易放入交易
