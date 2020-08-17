@@ -170,7 +170,7 @@ void compareBlock(const std::shared_ptr<const CBlock>& pblock, const int h)
     pubKey << 0 << OP_TRUE;
     BlockAssembler basm(Params());
     // 将区块大小限定为原来大小的100倍
-    basm.addBlockWeight(DEFAULT_BLOCK_MAX_WEIGHT * 100);
+    basm.addBlockWeight(DEFAULT_BLOCK_MAX_WEIGHT * 5);
     auto predBlk = basm.CreateNewBlock_hzx(pubKey, umap_setPredictTxid[h], txid_tail);
     // 记录预测交易哈希及其对应的的序号
     map<uint256, int> mapTxidIndex;
@@ -3972,7 +3972,7 @@ bool CChainState::AcceptBlock(const std::shared_ptr<const CBlock>& pblock, CVali
             writeNormalRecv(msg, time.substr(0, 10) + "_normalBlockRecv.log");
             printf("detect whether predict %d block \n", blkHeight);
             // 如果为该区块预测过交易,则比较预测准确性
-            if (umap_predictBlkLastTxHash.count(blkHeight)) {
+            if (umap_predictBlkLastTxHash.count(blkHeight) && umap_setPredictTxid.count(blkHeight) && umap_vecPrecictTxid.count(blkHeight) {
                 printf("predicted block for %d, ------current function: %s, line number: %d\n",blkHeight,  __FUNCTION__, __LINE__);
                 compareBlock(pblock, blkHeight);                  // 比较预测区块中的交易和新区快中的交易
                 umap_setPredictTxid.erase(blkHeight);             // 删除
