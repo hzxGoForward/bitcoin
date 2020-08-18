@@ -81,12 +81,6 @@ static void mempoolStatics(const int blkHeight)
 void predictNextBlockTxSequence(const int newBlockHeight)
 {
     // 为newBlockHeight预测下一笔交易
-    // const std::vector<unsigned char> op_true{OP_TRUE};
-    // CScriptWitness witness;
-    // witness.stack.push_back(op_true);
-    // uint256 witness_program;
-    // CSHA256().Write(&op_true[0], op_true.size()).Finalize(witness_program.begin());
-    // const CScript SCRIPT_PUB{CScript(OP_0) << std::vector<unsigned char>{witness_program.begin(), witness_program.end()}};
     printf("current function: %s, line number: %d\n", __FUNCTION__, __LINE__);
     CScript pubKey;
     pubKey << 0 << OP_TRUE;
@@ -97,29 +91,33 @@ void predictNextBlockTxSequence(const int newBlockHeight)
     umap_vecPrecictTxid[newBlockHeight].clear();
     ostringstream ss;
     ss << "接收时间  交易哈希    交易费  大小(字节)    权重 \n";
+    int insertCnt = 0;
+    int addBytes = 0;
     for (size_t i = 1; i < ptemplate->block.vtx.size(); ++i) {
-        auto txid = ptemplate->block.vtx[i]->GetHash();
+        const auto& txid = ptemplate->block.vtx[i]->GetHash();
         auto it = mempool.mapTx.find(txid);
         CAmount fee = it->GetFee();
         auto sz = it->GetTxSize();
         auto wei = it->GetTxWeight();
         string entertime = FormatISO8601DateTime(it->GetTime());
         ss << entertime << txid.ToString() << " " << fee << " " << sz << " " << wei << " \n";
-        umap_vecPrecictTxid[newBlockHeight].emplace_back(txid);
-        umap_setPredictTxid[newBlockHeight].emplace(txid);
+        if (umap_setPredictTxid[newBlockHeight].count(txid) == 0) {
+            umap_setPredictTxid[newBlockHeight].emplace(txid);
+            umap_vecPrecictTxid[newBlockHeight].emplace_back(txid);
+            insertCnt++;
+            addBytes += sz;
+        }  
     }
-    ss << "区块高度: " << newBlockHeight << " \n";
-    ss << "预测时间: " << FormatISO8601DateTime(GetTime()) << " \n";
-    ss << "总交易费: " << blockAssembler.getNFee() << " \n";
-    ss << "最后一笔交易费率: " << blockAssembler.lastTxFeeRate << " \n";
+    ss << "区块高度: " << newBlockHeight << " 预测时间: " << FormatISO8601DateTime(GetTime()) << " \n";
+    ss << "总交易费: " << blockAssembler.getNFee() << "  最后一笔交易费率: " << blockAssembler.lastTxFeeRate << " \n";
+    ss << "总交易数: " << ptemplate->block.vtx.size() << " 实际添加交易数: " << insertCnt << " 消耗带宽: "<<addBytes<<" \n";
     // 保存最后一笔交易的哈希值和插入区块时的费率
     // 如果当前预测区块为空，则最后一笔交易的哈希值直接为空。
     umap_predictBlkLastTxHash[newBlockHeight] = {uint256(), 0};
     if (ptemplate->block.vtx.size() > 1)
         umap_predictBlkLastTxHash[newBlockHeight] = {ptemplate->block.vtx.back()->GetHash(), blockAssembler.lastTxFeeRate};
     writeFile(to_string(newBlockHeight) + "_predBlk_first.log", ss.str());
-    ss.clear();
-    printf("current function: %s, line number: %d\n", __FUNCTION__, __LINE__);
+    // printf("current function: %s, line number: %d, predict tx cnt: %d, actual insert cnt: %d \n", __FUNCTION__, __LINE__, ptemplate->block.vtx.size(), insertCnt);
 }
 
 /// 输出所有纳入预测序列的交易信息
@@ -153,9 +151,19 @@ void writePredictTx(const int h)
 /// 将收到的区块和已预测区块中的交易进行比较
 void compareBlock(const std::shared_ptr<const CBlock>& pblock, const int h)
 {
-    printf("current function: %s, line number: %d\n", __FUNCTION__, __LINE__);
     auto now = FormatISO8601DateTime(GetTime());
-    // 从pblock交易列表倒序寻找存在于umap_predictBlkTxInfo中的交易id
+    // 0. 检查是否为空区块，如果是空区块，加入当前信息，然后退出
+    if (pblock->vtx.size() == 1) {
+        ostringstream ss2;
+        ss2 << "区块大小: " << GetSerializeSize(pblock, PROTOCOL_VERSION) << "字节 \n";
+        ss2 << "接收时间: " << now << " 区块哈希: " << pblock->GetHash().ToString() << " \n";
+        ss2 << "交易个数: " << pblock->vtx.size() << " \n";
+        ss2 << "空区块不进行预测，直接发送即可 \n";
+        writeFile(to_string(h) + "_predBlk_NewBlk_Compare.log", ss2.str());
+        return;
+    }
+
+    // 1. 从pblock交易列表倒序寻找存在于umap_predictBlkTxInfo中的交易id
     uint256 txid_tail;
     for (int i = pblock->vtx.size() - 1; i > 0; --i) {
         const auto& txid = pblock->vtx[i]->GetHash();
@@ -164,20 +172,21 @@ void compareBlock(const std::shared_ptr<const CBlock>& pblock, const int h)
             break;
         }
     }
-    // 基于预测序列中的交易，预测下一个区块的交易，遇到txid_tail后结束
-    // 根据预测序列交易，生成包含txid_tail的预测区块，然后输出区块
+    printf("current function: %s, line number: %d\n", __FUNCTION__, __LINE__);
+
+    // 2. 基于预测序列中的交易，预测下一个区块的交易，遇到txid_tail后结束，或者预测交易序列是当前2倍就停止
     CScript pubKey;
     pubKey << 0 << OP_TRUE;
     BlockAssembler basm(Params());
-    // 将区块大小限定为原来大小的2倍
-    basm.addBlockWeight(DEFAULT_BLOCK_MAX_WEIGHT * 2);
-    auto predBlk = basm.CreateNewBlock_hzx(pubKey, umap_setPredictTxid[h], txid_tail);
-    // 记录预测交易哈希及其对应的的序号
+    std::vector<uint256> vtxHash;
+    basm.predictNextBlockTxHash(umap_setPredictTxid[h], txid_tail, pblock->vtx.size()*2, vtxHash);
+    printf("current function: %s, line number: %d\n", __FUNCTION__, __LINE__);
+
+    // 3. 记录预测的交易序列中每个交易的哈希值的索引
     map<uint256, int> mapTxidIndex;
     ostringstream ss1;
-    printf("current function: %s, line number: %d\n", __FUNCTION__, __LINE__);
-    for (size_t i = 1; i < predBlk->block.vtx.size(); ++i) {
-        const auto& txid = predBlk->block.vtx[i]->GetHash();
+    for (size_t i = 1; i < vtxHash.size(); ++i) {
+        const auto& txid = vtxHash[i];
         mapTxidIndex[txid] = i;
         auto it = mempool.mapTx.find(txid);
         assert(it != mempool.mapTx.end());
@@ -188,47 +197,35 @@ void compareBlock(const std::shared_ptr<const CBlock>& pblock, const int h)
         CAmount fee = it->GetFee();
         ss1 << entertime << " " << txid.ToString() << " " << i << " " << txSize << " " << txWeight << " " << fee << " \n";
     }
+    ss1 << "预测时间: " << now << " \n";
+    ss1 << "交易个数: " << vtxHash.size() << " \n";
     printf("current function: %s, line number: %d\n", __FUNCTION__, __LINE__);
-    ss1 << "预测时间: " << now << " 区块哈希: " << predBlk->block.GetHash().ToString() << " \n";
-    printf("current function: %s, line number: %d\n", __FUNCTION__, __LINE__);
-    ss1 << "交易个数: " << predBlk->block.vtx.size() << " \n";
-    printf("current function: %s, line number: %d\n", __FUNCTION__, __LINE__);
-    // ss1 << "区块大小: " << GetSerializeSize(predBlk->block, PROTOCOL_VERSION) << "字节 \n";
-    // 再次遍历pblock中每一笔交易，查看是否存在于mapTxidIndex中
-    // 哈希值 交易费 交易大小 交易权重 进入交易池时间
-    string compare_msg = "";
-    ostringstream ss2;
+
+    // 4. 遍历pblock中每一笔交易，记录每个交易对应的预测序列中的交易号
+    ostringstream ss2, tmpSS;                                       // tmpSS 用于记录顺序颠倒的交易序列
     ss2 << "进入时间 交易哈希 对应索引 交易费用 交易大小 交易权重 \n";
-    int predBlkHitCnt = 0;                             // 预测区块中交易命中次数
-    int predTxHitCnt = 0;                              // 预测交易序列命中次数
-    int poolHitCnt = 0;                                // 交易池命中数
-    int lastNumber = -1;                               // pblock中最后一笔交易对应的index
-    int firstNumber = -1;                              // pblock第一笔被命中交易的index
-    vector<int> hitHash(predBlk->block.vtx.size(), 0); // 表示交易是否被命中，0未命中，1表示命中
-    ostringstream tmpSS;
-    printf("current function: %s, line number: %d\n", __FUNCTION__, __LINE__);
+    int predBlkHitCnt = 0;                                          // 预测交易序列命中次数
+    int predTxHitCnt = 0;                                           // 双方发送的交易序列命中次数
+    int poolHitCnt = 0;                                             // 交易池命中数
+    int lastNumber = -1;                                            // pblock最后一笔被命中交易对应maptxidIndex的index
+    int firstNumber = -1;                                           // pblock第一笔被命中交易对应maptxidIndex的index
+    vector<int> hitHash(vtxHash.size(), 0);                         // 表示交易是否被命中，0未命中，1表示命中
     for (size_t i = 0; i < pblock->vtx.size(); ++i) {
         const CTransactionRef& tx = pblock->vtx[i];
-        const auto& txid = tx->GetHash(); // 交易哈希
-        string entertime = now;    // 进入交易池时间
-        string index = "-111";     // 对应预测区块的序号
-        size_t txSize = 0;         // 交易大小
-        size_t txWeight = 0;       // 交易权重
-        CAmount fee = -1;          // 交易费
-        // 如果预测交易命中接收区块中的交易或者存在于交易池中
-        if (mapTxidIndex.count(txid) || mempool.exists(txid)) {
+        const auto& txid = tx->GetHash();                           // 交易哈希
+        string entertime = now, index = "None";                     // 进入交易池时间, 对应预测区块的序号
+        size_t txSize = 0, txWeight = 0;                            // 交易大小, 交易权重
+        CAmount fee = -1;                                           // 交易费
+        if (mapTxidIndex.count(txid) || mempool.exists(txid)) {     // 如果交易存在于本地
             auto it = mempool.mapTx.find(txid);
-            assert(it != mempool.mapTx.end());
-            auto info = mempool.info(txid);
             entertime = FormatISO8601DateTime(it->GetTime());
             txSize = it->GetTxSize();
             txWeight = it->GetTxWeight();
             fee = it->GetFee();
-            // 如果存在于预测区块的交易序列中
-            if (mapTxidIndex.count(txid)) {
+            if (mapTxidIndex.count(txid)) {                         // 如果存在于生成的交易序列中
                 predBlkHitCnt++;
                 int tmpIndex = mapTxidIndex[txid];
-                hitHash[tmpIndex] = 1; // hitHash相应交易被命中
+                hitHash[tmpIndex] = 1;
                 if (firstNumber == -1) {
                     firstNumber = tmpIndex;
                 }
@@ -237,18 +234,15 @@ void compareBlock(const std::shared_ptr<const CBlock>& pblock, const int h)
                 }
                 index = to_string(tmpIndex);
                 lastNumber = tmpIndex;
-                // 如果存在于交易预测序列中
-            } else if (umap_setPredictTxid[h].count(txid)) {
+            } else if (umap_setPredictTxid[h].count(txid)) {        // 如果存在向对方发送过得交易序列中
                 index = "Seq";
                 predTxHitCnt++;
-                // 如果存在于内存池中而未纳入预测序列
-            } else if (mempool.mapTx.count(txid)) {
+            } else if (mempool.mapTx.count(txid)) {                 // 如果存在于内存池中而未纳入预测序列
                 index = "Pool";
                 poolHitCnt++;
-                // 如果本地未命中
-            } else {
-                index = "None";
             }
+        } else {                                                    // 如果本地没有这笔交易
+            index = "None";
         }
         ss2 << entertime << " " << txid.ToString() << " " << index << " " << fee << txSize << " " << txWeight << " "
             << " \n";
@@ -266,21 +260,23 @@ void compareBlock(const std::shared_ptr<const CBlock>& pblock, const int h)
     ss2 << "交易池交易数: " << mempool.size() << " \n";
     ss2 << "预测序列交易数: " << umap_vecPrecictTxid[h].size() << " \n";
     ss2 << "预测范围内多余交易索引：\n[";
-    for (int idx = firstNumber; idx <= lastNumber; ++idx) {
+
+    // 5. 记录交易序列中多余的交易，并将它们放入下一个区块的预测序列中
+    for (int idx = 0; idx <= vtxHash.size(); ++idx) {
         if (hitHash[idx] == 0) {
-            ss2 << idx << " ";
+            if (idx>=firstNumber && idx <= lastNumber)
+                ss2 << idx << " ";
+            umap_setPredictTxid[h + 1].insert(vtxHash[idx]);
+            umap_vecPrecictTxid[h + 1].emplace_back(vtxHash[idx]);
         }
     }
     ss2 << "] \n";
+    printf("current function: %s, line number: %d\n", __FUNCTION__, __LINE__);
     // 分别保存预测区块、比较结果、预测的交易序列
     writeFile(to_string(h) + "_predBlk2.log", ss1.str());
     writeFile(to_string(h) + "_predBlk_NewBlk_Compare.log", ss2.str());
-    writePredictTx(h);
-
-    // 清空预测的数据
-    ss1.clear();
-    ss2.clear();
-    printf("current function: %s, line number: %d\n", __FUNCTION__, __LINE__);
+    // writePredictTx(h);
+    
 }
 // TODO END BY HZX
 
@@ -1139,10 +1135,6 @@ bool MemPoolAccept::PreChecks(ATMPArgs& args, Workspace& ws)
         int height = ::ChainActive().Tip()->nHeight;
         mempoolStatics(height);
         const uint256 txid = ptx->GetHash();
-        string exists = "false";
-        if (mempool.exists(txid))
-            exists = "true";
-        // printf("statics mempool insert %s, exists: %s,  %s, line number: %d\n", txid.ToString().data(), exists.data(),  __FUNCTION__, __LINE__);
         // 寻找iter在mempool中依赖的祖先交易,将相关交易放入交易
         for (const auto& tmpTx : setAncestors) {
             const auto& ansTxid = tmpTx->GetTx().GetHash();
@@ -3975,7 +3967,7 @@ bool CChainState::AcceptBlock(const std::shared_ptr<const CBlock>& pblock, CVali
             // 如果为该区块预测过交易,则比较预测准确性
             if (umap_predictBlkLastTxHash.count(blkHeight) && umap_setPredictTxid.count(blkHeight) && umap_vecPrecictTxid.count(blkHeight)) {
                 printf("predicted block for %d, ------current function: %s, line number: %d\n",blkHeight,  __FUNCTION__, __LINE__);
-                // compareBlock(pblock, blkHeight);                  // 比较预测区块中的交易和新区快中的交易
+                // compareBlock(pblock, blkHeight);                // 比较预测区块中的交易和新区块中的交易
                 umap_setPredictTxid.erase(blkHeight);             // 删除
                 umap_predictBlkLastTxHash.erase(blkHeight);       // 删除
                 umap_vecPrecictTxid.erase(blkHeight);             // 删除
@@ -4071,8 +4063,8 @@ bool ProcessNewBlock(const CChainParams& chainparams, const std::shared_ptr<cons
         if (!::ChainstateActive().IsInitialBlockDownload()) {
             printf("current function: %s, line number: %d\n", __FUNCTION__, __LINE__);
             int newBlockHeight = ::ChainActive().Tip()->nHeight + 1;
-            // 预测下一个区块中的交易
-            if (umap_vecPrecictTxid.count(newBlockHeight) == 0) {
+            // 这里采用最后一笔交易的费率预测，如果从未预测过，不会存在最后一笔交易的费率
+            if (umap_predictBlkLastTxHash.count(newBlockHeight) == 0) {
                 predictNextBlockTxSequence(newBlockHeight);
             }
         }
