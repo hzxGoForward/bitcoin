@@ -91,6 +91,7 @@ void adjustPredictTxList(const int newBlockHeight) {
             umap_vecPrecictTxid[newBlockHeight].emplace_back(txid);
         }
     }
+    umap_predictBlkLastTxHash[newBlockHeight] = {ptemplate->block.vtx.back()->GetHash(), blockAssembler.lastTxFeeRate};
 }
 
 
@@ -1076,17 +1077,6 @@ bool MemPoolAccept::PreChecks(ATMPArgs& args, Workspace& ws)
         int height = ::ChainActive().Tip()->nHeight;
         mempoolStatics(height);
         adjustPredictTxList(height + 1);
-        //const uint256 txid = ptx->GetHash();
-        //// 寻找iter在mempool中依赖的祖先交易,将相关交易放入交易
-        //for (const auto& tmpTx : setAncestors) {
-        //    const auto& ansTxid = tmpTx->GetTx().GetHash();
-        //    if (umap_setPredictTxid[height + 1].count(ansTxid) == 0) {
-        //        umap_setPredictTxid[height + 1].insert(ansTxid);
-        //        umap_vecPrecictTxid[height + 1].push_back(ansTxid);
-        //    }
-        //}
-        //umap_setPredictTxid[height + 1].insert(txid);
-        //umap_vecPrecictTxid[height + 1].push_back(txid);
     }
     // TODO END BY HZX
 
