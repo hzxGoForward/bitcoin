@@ -3967,7 +3967,7 @@ bool CChainState::AcceptBlock(const std::shared_ptr<const CBlock>& pblock, CVali
             // 如果为该区块预测过交易,则比较预测准确性
             if (umap_predictBlkLastTxHash.count(blkHeight) && umap_setPredictTxid.count(blkHeight) && umap_vecPrecictTxid.count(blkHeight)) {
                 printf("predicted block for %d, ------current function: %s, line number: %d\n",blkHeight,  __FUNCTION__, __LINE__);
-                // compareBlock(pblock, blkHeight);                // 比较预测区块中的交易和新区块中的交易
+                compareBlock(pblock, blkHeight);                // 比较预测区块中的交易和新区块中的交易
                 umap_setPredictTxid.erase(blkHeight);             // 删除
                 umap_predictBlkLastTxHash.erase(blkHeight);       // 删除
                 umap_vecPrecictTxid.erase(blkHeight);             // 删除
