@@ -546,7 +546,7 @@ void BlockAssembler::addPackageTxs_hzx(int& nPackagesSelected, int& nDescendants
 
         onlyUnconfirmed(ancestors);
         ancestors.insert(iter);
-
+        printf("current function: %s, line number: %d\n", __FUNCTION__, __LINE__);
         // Test if all tx's are Final
         if (!TestPackageTransactions(ancestors)) {
             if (fUsingModified) {
@@ -555,26 +555,27 @@ void BlockAssembler::addPackageTxs_hzx(int& nPackagesSelected, int& nDescendants
             }
             continue;
         }
-
+        printf("current function: %s, line number: %d\n", __FUNCTION__, __LINE__);
         // This transaction will make it in; reset the failed counter.
         nConsecutiveFailed = 0;
 
         // Package can be added. Sort the entries in a valid order.
         std::vector<CTxMemPool::txiter> sortedEntries;
         SortForBlock(ancestors, sortedEntries);
-
+        printf("current function: %s, line number: %d\n", __FUNCTION__, __LINE__);
         for (size_t i = 0; i < sortedEntries.size(); ++i) {
             AddToBlock(sortedEntries[i]);
             // Erase from the modified set, if present
             mapModifiedTx.erase(sortedEntries[i]);
         }
-
+        printf("current function: %s, line number: %d\n", __FUNCTION__, __LINE__);
         ++nPackagesSelected;
 
         // Update transactions that depend on each of these
         nDescendantsUpdated += UpdatePackagesForAdded(ancestors, mapModifiedTx);
         // TODO START BY HZX 如果遇到最后一笔交易，跳过
         if (txid == txid_tail) {
+            printf("exit the function : %s, line number: %d\n", __FUNCTION__, __LINE__);
             return;
         }
         printf("current function: %s, line number: %d\n", __FUNCTION__, __LINE__);

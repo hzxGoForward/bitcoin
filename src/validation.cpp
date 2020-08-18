@@ -169,8 +169,8 @@ void compareBlock(const std::shared_ptr<const CBlock>& pblock, const int h)
     CScript pubKey;
     pubKey << 0 << OP_TRUE;
     BlockAssembler basm(Params());
-    // 将区块大小限定为原来大小的100倍
-    basm.addBlockWeight(DEFAULT_BLOCK_MAX_WEIGHT * 5);
+    // 将区块大小限定为原来大小的2倍
+    basm.addBlockWeight(DEFAULT_BLOCK_MAX_WEIGHT * 2);
     auto predBlk = basm.CreateNewBlock_hzx(pubKey, umap_setPredictTxid[h], txid_tail);
     // 记录预测交易哈希及其对应的的序号
     map<uint256, int> mapTxidIndex;
