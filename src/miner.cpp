@@ -470,7 +470,7 @@ void BlockAssembler::addPackageTxs_hzx(int& nPackagesSelected, int& nDescendants
         }
         // TODO START BY HZX 如果mi指向的交易不在预测序列内，跳过
         auto txid = mi->GetTx().GetHash();
-        if (mappredictBlkTxInfo.count(txid) == 0) {
+        if (mi != mempool.mapTx.get<ancestor_score>().end() && mappredictBlkTxInfo.count(txid) == 0) {
             ++mi;
             continue;
         }
@@ -504,7 +504,7 @@ void BlockAssembler::addPackageTxs_hzx(int& nPackagesSelected, int& nDescendants
         // We skip mapTx entries that are inBlock, and mapModifiedTx shouldn't
         // contain anything that is inBlock.
         assert(!inBlock.count(iter));
-
+        printf("current function: %s, line number: %d\n", __FUNCTION__, __LINE__);
         uint64_t packageSize = iter->GetSizeWithAncestors();
         CAmount packageFees = iter->GetModFeesWithAncestors();
         int64_t packageSigOpsCost = iter->GetSigOpCostWithAncestors();
@@ -537,7 +537,7 @@ void BlockAssembler::addPackageTxs_hzx(int& nPackagesSelected, int& nDescendants
             }
             continue;
         }
-
+        printf("current function: %s, line number: %d\n", __FUNCTION__, __LINE__);
         CTxMemPool::setEntries ancestors;
         uint64_t nNoLimit = std::numeric_limits<uint64_t>::max();
         std::string dummy;
@@ -576,6 +576,7 @@ void BlockAssembler::addPackageTxs_hzx(int& nPackagesSelected, int& nDescendants
         if (txid == txid_tail) {
             return;
         }
+        printf("current function: %s, line number: %d\n", __FUNCTION__, __LINE__);
         // TODO END BY HZX
     }
 }
