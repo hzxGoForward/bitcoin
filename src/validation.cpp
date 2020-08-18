@@ -66,7 +66,7 @@
 #define MICRO 0.000001
 #define MILLI 0.001
 
-// TODO START BY HZX
+/// TODO START BY HZX
 static void mempoolStatics(const int blkHeight)
 {
     auto now = FormatISO8601DateTime(GetTime());  // 时间
@@ -77,7 +77,7 @@ static void mempoolStatics(const int blkHeight)
     // printf("%s:   写入交易池统计信息..........\n", now.data());
 }
 
-// 根据接收的交易序列，重新构建一个区块，然后将可能发送的交易发送给邻居节点
+/// 根据接收的交易序列，重新构建一个区块，然后将可能发送的交易发送给邻居节点
 void adjustPredictTxList(const int newBlockHeight) {
     // 创建一个新的区块
     CScript pubKey;
