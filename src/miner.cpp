@@ -241,14 +241,12 @@ int BlockAssembler::UpdatePackagesForAdded(const CTxMemPool::setEntries& already
     for (CTxMemPool::txiter it : alreadyAdded) {
         CTxMemPool::setEntries descendants;
         mempool.CalculateDescendants(it, descendants);
-        printf("current function: %s, line number: %d\n", __FUNCTION__, __LINE__);
         // Insert all descendants (not yet in block) into the modified set
         for (CTxMemPool::txiter desc : descendants) {
             if (alreadyAdded.count(desc))
                 continue;
             ++nDescendantsUpdated;
             modtxiter mit = mapModifiedTx.find(desc);
-            printf("current function: %s, line number: %d\n", __FUNCTION__, __LINE__);
             if (mit == mapModifiedTx.end()) {
                 printf("current function: %s, line number: %d\n", __FUNCTION__, __LINE__);
                 CTxMemPoolModifiedEntry modEntry(desc);
@@ -256,14 +254,12 @@ int BlockAssembler::UpdatePackagesForAdded(const CTxMemPool::setEntries& already
                 modEntry.nModFeesWithAncestors -= it->GetModifiedFee();
                 modEntry.nSigOpCostWithAncestors -= it->GetSigOpCost();
                 mapModifiedTx.insert(modEntry);
-                printf("current function: %s, line number: %d\n", __FUNCTION__, __LINE__);
             } else {
                 mapModifiedTx.modify(mit, update_for_parent_inclusion(it));
-                printf("current function: %s, line number: %d\n", __FUNCTION__, __LINE__);
+
             }
         }
     }
-    printf("current function: %s, line number: %d\n", __FUNCTION__, __LINE__);
     return nDescendantsUpdated;
 }
 
@@ -466,6 +462,7 @@ void BlockAssembler::addPackageTxs_hzx(int& nPackagesSelected, int& nDescendants
     // mempool has a lot of entries.
     const int64_t MAX_CONSECUTIVE_FAILURES = 1000;
     int64_t nConsecutiveFailed = 0;
+    printf("current function: %s, line number: %d\n", __FUNCTION__, __LINE__);
     while (mi != mempool.mapTx.get<ancestor_score>().end() || !mapModifiedTx.empty()) {
         // First try to find a new transaction in mapTx to evaluate.
         if (mi != mempool.mapTx.get<ancestor_score>().end() &&
@@ -474,7 +471,6 @@ void BlockAssembler::addPackageTxs_hzx(int& nPackagesSelected, int& nDescendants
             continue;
         }
         // TODO START BY HZX 如果mi指向的交易不在预测序列内，跳过
-        printf("current function: %s, line number: %d\n", __FUNCTION__, __LINE__);
         const auto& txid = mi->GetTx().GetHash();
         if (mi != mempool.mapTx.get<ancestor_score>().end() && mappredictBlkTxInfo.count(txid) == 0) {
             ++mi;
@@ -576,18 +572,18 @@ void BlockAssembler::addPackageTxs_hzx(int& nPackagesSelected, int& nDescendants
         }
         
         ++nPackagesSelected;
-        printf("current function: %s, line number: %d, ancestors.size(): %d, mapModifiedTx.size(): %d \n", __FUNCTION__, __LINE__, ancestors.size(), mapModifiedTx.size());
+        // printf("current function: %s, line number: %d, ancestors.size(): %d, mapModifiedTx.size(): %d \n", __FUNCTION__, __LINE__, ancestors.size(), mapModifiedTx.size());
         // Update transactions that depend on each of these
         nDescendantsUpdated += UpdatePackagesForAdded(ancestors, mapModifiedTx);
         // TODO START BY HZX 如果遇到最后一笔交易，跳过
         // txid的比较函数是Compare，而并非简单地等于号比较
-        if (txid.Compare(txid_tail)==0) {
+        if (txid == txid_tail) {
             printf("exit the function : %s, line number: %d\n", __FUNCTION__, __LINE__);
             return;
         }
-        printf("current function: %s, line number: %d\n", __FUNCTION__, __LINE__);
         // TODO END BY HZX
     }
+    printf("current function: %s, line number: %d\n", __FUNCTION__, __LINE__);
 }
 
 
