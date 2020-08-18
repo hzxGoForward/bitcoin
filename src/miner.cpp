@@ -580,7 +580,8 @@ void BlockAssembler::addPackageTxs_hzx(int& nPackagesSelected, int& nDescendants
         // Update transactions that depend on each of these
         nDescendantsUpdated += UpdatePackagesForAdded(ancestors, mapModifiedTx);
         // TODO START BY HZX 如果遇到最后一笔交易，跳过
-        if (txid.ToString() == txid_tail.ToString()) {
+        // txid的比较函数是Compare，而并非简单地等于号比较
+        if (txid.Compare(txid_tail)==0) {
             printf("exit the function : %s, line number: %d\n", __FUNCTION__, __LINE__);
             return;
         }
