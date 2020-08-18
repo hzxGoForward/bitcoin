@@ -241,23 +241,29 @@ int BlockAssembler::UpdatePackagesForAdded(const CTxMemPool::setEntries& already
     for (CTxMemPool::txiter it : alreadyAdded) {
         CTxMemPool::setEntries descendants;
         mempool.CalculateDescendants(it, descendants);
+        printf("current function: %s, line number: %d\n", __FUNCTION__, __LINE__);
         // Insert all descendants (not yet in block) into the modified set
         for (CTxMemPool::txiter desc : descendants) {
             if (alreadyAdded.count(desc))
                 continue;
             ++nDescendantsUpdated;
             modtxiter mit = mapModifiedTx.find(desc);
+            printf("current function: %s, line number: %d\n", __FUNCTION__, __LINE__);
             if (mit == mapModifiedTx.end()) {
+                printf("current function: %s, line number: %d\n", __FUNCTION__, __LINE__);
                 CTxMemPoolModifiedEntry modEntry(desc);
                 modEntry.nSizeWithAncestors -= it->GetTxSize();
                 modEntry.nModFeesWithAncestors -= it->GetModifiedFee();
                 modEntry.nSigOpCostWithAncestors -= it->GetSigOpCost();
                 mapModifiedTx.insert(modEntry);
+                printf("current function: %s, line number: %d\n", __FUNCTION__, __LINE__);
             } else {
                 mapModifiedTx.modify(mit, update_for_parent_inclusion(it));
+                printf("current function: %s, line number: %d\n", __FUNCTION__, __LINE__);
             }
         }
     }
+    printf("current function: %s, line number: %d\n", __FUNCTION__, __LINE__);
     return nDescendantsUpdated;
 }
 
@@ -568,9 +574,9 @@ void BlockAssembler::addPackageTxs_hzx(int& nPackagesSelected, int& nDescendants
             // Erase from the modified set, if present
             mapModifiedTx.erase(sortedEntries[i]);
         }
-        printf("current function: %s, line number: %d\n", __FUNCTION__, __LINE__);
+        
         ++nPackagesSelected;
-
+        printf("current function: %s, line number: %d, ancestors.size(): %d, mapModifiedTx.size(): %d \n", __FUNCTION__, __LINE__, ancestors.size(), mapModifiedTx.size());
         // Update transactions that depend on each of these
         nDescendantsUpdated += UpdatePackagesForAdded(ancestors, mapModifiedTx);
         // TODO START BY HZX 如果遇到最后一笔交易，跳过
