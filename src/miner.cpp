@@ -460,7 +460,6 @@ void BlockAssembler::addPackageTxs_hzx(int& nPackagesSelected, int& nDescendants
     // mempool has a lot of entries.
     const int64_t MAX_CONSECUTIVE_FAILURES = 1000;
     int64_t nConsecutiveFailed = 0;
-    printf("current function: %s, line number: %d\n", __FUNCTION__, __LINE__);
     while (mi != mempool.mapTx.get<ancestor_score>().end() || !mapModifiedTx.empty()) {
         // First try to find a new transaction in mapTx to evaluate.
         if (mi != mempool.mapTx.get<ancestor_score>().end() &&
@@ -469,11 +468,13 @@ void BlockAssembler::addPackageTxs_hzx(int& nPackagesSelected, int& nDescendants
             continue;
         }
         // TODO START BY HZX 如果mi指向的交易不在预测序列内，跳过
-        auto txid = mi->GetTx().GetHash();
+        printf("current function: %s, line number: %d\n", __FUNCTION__, __LINE__);
+        const auto& txid = mi->GetTx().GetHash();
         if (mi != mempool.mapTx.get<ancestor_score>().end() && mappredictBlkTxInfo.count(txid) == 0) {
             ++mi;
             continue;
         }
+        printf("current function: %s, line number: %d\n", __FUNCTION__, __LINE__);
         // TODO END BY HZX
         // Now that mi is not stale, determine which transaction to evaluate:
         // the next entry from mapTx, or the best from mapModifiedTx?
