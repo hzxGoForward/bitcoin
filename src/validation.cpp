@@ -111,14 +111,14 @@ void compareBlock(const std::shared_ptr<const CBlock>& pblock, const int h)
     }
 
     // 1. 从pblock交易列表倒序寻找存在于umap_predictBlkTxInfo中的交易id
-    uint256 txid_tail;
-    for (int i = pblock->vtx.size() - 1; i > 0; --i) {
-        const auto& txid = pblock->vtx[i]->GetHash();
-        if (umap_setPredictTxid[h].count(txid)) {
-            txid_tail = txid;
-            break;
-        }
-    }
+    //uint256 txid_tail;
+    //for (int i = pblock->vtx.size() - 1; i > 0; --i) {
+    //    const auto& txid = pblock->vtx[i]->GetHash();
+    //    if (umap_setPredictTxid[h].count(txid)) {
+    //        txid_tail = txid;
+    //        break;
+    //    }
+    //}
     // printf("current function: %s, line number: %d\n", __FUNCTION__, __LINE__);
 
     // 2. 基于预测序列中的交易，预测下一个区块的交易，遇到txid_tail后结束，或者预测交易序列是当前2倍就停止
@@ -127,8 +127,9 @@ void compareBlock(const std::shared_ptr<const CBlock>& pblock, const int h)
     BlockAssembler basm(Params());
     auto blk = basm.CreateNewBlock(pubKey);
     std::vector<uint256> vtxHash;
-    for (auto& tx : blk->block.vtx) {
-        vtxHash.push_back(tx->GetHash());
+    // 除去coinbase交易之外，将其他交易哈希放入vtxHash
+    for (int i = 1; i < blk->block.vtx.size(); ++i) {
+        vtxHash.push_back(blk->block.vtx[i]->GetHash());
     }
     // basm.predictNextBlockTxHash(umap_setPredictTxid[h], txid_tail, pblock->vtx.size()*2, vtxHash);
     // printf("current function: %s, line number: %d\n", __FUNCTION__, __LINE__);
