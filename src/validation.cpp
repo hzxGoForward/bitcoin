@@ -119,15 +119,21 @@ void compareBlock(const std::shared_ptr<const CBlock>& pblock, const int h)
             break;
         }
     }
-    printf("current function: %s, line number: %d\n", __FUNCTION__, __LINE__);
+    // printf("current function: %s, line number: %d\n", __FUNCTION__, __LINE__);
 
     // 2. 基于预测序列中的交易，预测下一个区块的交易，遇到txid_tail后结束，或者预测交易序列是当前2倍就停止
     CScript pubKey;
     pubKey << 0 << OP_TRUE;
     BlockAssembler basm(Params());
+    auto blk = basm.CreateNewBlock(pubKey);
     std::vector<uint256> vtxHash;
-    basm.predictNextBlockTxHash(umap_setPredictTxid[h], txid_tail, pblock->vtx.size()*2, vtxHash);
-    printf("current function: %s, line number: %d\n", __FUNCTION__, __LINE__);
+    for (auto& tx : blk->block.vtx) {
+        vtxHash.push_back(tx->GetHash());
+    }
+    // basm.predictNextBlockTxHash(umap_setPredictTxid[h], txid_tail, pblock->vtx.size()*2, vtxHash);
+    // printf("current function: %s, line number: %d\n", __FUNCTION__, __LINE__);
+
+
 
     // 3. 记录预测的交易序列中每个交易的哈希值的索引
     map<uint256, int> mapTxidIndex;
