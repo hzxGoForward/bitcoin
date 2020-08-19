@@ -172,9 +172,6 @@ public:
     // 预测区块中最后一个添加的交易的费率
     double lastTxFeeRate;
     /** 利用在minIndex和maxIndex范围之间生成新的预测区块 */
-    // std::unique_ptr<CBlockTemplate> CreateNewBlock_hzx(const CScript& scriptPubKeyIn, const std::set<uint256>& mappredictBlkTxInfo, const uint256& txid_tail);
-
-    // void addPackageTxs_hzx(int& nPackagesSelected, int& nDescendantsUpdated, const std::set<uint256>& mappredictBlkTxInfo, const uint256& txid_tail) EXCLUSIVE_LOCKS_REQUIRED(mempool.cs);
 
     void predictNextBlockTxHash(const std::set<uint256>& mappredictBlkTxInfo, const uint256& txid_tail, const int txCntLimit, std::vector<uint256>& vecPredictTxhash) EXCLUSIVE_LOCKS_REQUIRED(mempool.cs);
     CAmount getNFee() { return nFees; }
