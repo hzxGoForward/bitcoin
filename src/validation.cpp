@@ -125,8 +125,8 @@ void compareBlock(const std::shared_ptr<const CBlock>& pblock, const int h)
     CScript pubKey;
     pubKey << 0 << OP_TRUE;
     BlockAssembler basm(Params());
-    // 增加权重10000，
-    // basm.addBlockWeight(100000);
+    // 增加权重200000，
+    basm.addBlockWeight(200000);
     auto blk = basm.CreateNewBlock(pubKey);
     std::vector<uint256> vtxHash;
     // 除去coinbase交易之外，将其他交易哈希放入vtxHash
