@@ -9,7 +9,7 @@
 using namespace std;
 static int64_t writeDiff = 120; // 120秒写一次
 static int64_t lastMempoolRecordTime = 0;
-static string dir = "/home2/zxhu/bitcoin-0.19.0_hzx/experiment20200819/";
+static string dir = "/home2/zxhu/bitcoin-0.19.0_hzx/experiment20200820/";
 
 
 /// int对应区块高度，set<uint256>表示对应某个高度下，纳入预测序列的所有交易集合，用于快速查询
