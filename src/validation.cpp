@@ -151,8 +151,8 @@ void compareBlock(const std::shared_ptr<const CBlock>& pblock, const int h)
     int predBlkHitCnt = 0;                                          // 预测交易序列命中次数
     int predTxHitCnt = 0;                                           // 双方发送的交易序列命中次数
     int poolHitCnt = 0;                                             // 交易池命中数
-    int lastNumber = -1;                                            // pblock最后一笔被命中交易对应maptxidIndex的index
-    int firstNumber = -1;                                           // pblock第一笔被命中交易对应maptxidIndex的index
+    int lastNumber = -1;                                            // pblock上一笔被命中交易的索引
+    int minNumber = std::numeric_limits<int>::max(), maxNumber = -1;                       // pblock被命中交易索引的最大值和最小值
     vector<int> hitHash(vtxHash.size(), 0);                         // 表示交易是否被命中，0未命中，1表示命中
     for (size_t i = 0; i < pblock->vtx.size(); ++i) {
         const CTransactionRef& tx = pblock->vtx[i];
@@ -170,9 +170,8 @@ void compareBlock(const std::shared_ptr<const CBlock>& pblock, const int h)
                 predBlkHitCnt++;
                 int tmpIndex = mapTxidIndex[txid];
                 hitHash[tmpIndex] = 1;
-                if (firstNumber == -1) {
-                    firstNumber = tmpIndex;
-                }
+                minNumber = min(minNumber, tmpIndex);
+                maxNumber = max(minNumber, tmpIndex);
                 if (lastNumber > tmpIndex) {
                     tmpSS << lastNumber << " " << tmpIndex<<" \n";
                 }
@@ -195,14 +194,14 @@ void compareBlock(const std::shared_ptr<const CBlock>& pblock, const int h)
     ss2 << "接收时间: " << now << " 区块哈希: " << pblock->GetHash().ToString() << " \n";
     ss2 << "预测区块命中数: " << predBlkHitCnt << " 预测序列命中数: " << predTxHitCnt << " \n";
     ss2 << "交易池命中数: " << poolHitCnt << " 本地未命中数: " << (pblock->vtx.size() - predBlkHitCnt - predTxHitCnt - poolHitCnt) << " \n";
-    ss2 << "预测范围: [" << firstNumber << ", " << lastNumber << "] 预测区块多余交易数: " << lastNumber - firstNumber + 1 - predBlkHitCnt << " \n";
+    ss2 << "预测范围: [" << minNumber << ", " << maxNumber << "] 预测区块多余交易数: " << maxNumber - minNumber + 1 - predBlkHitCnt << " \n";
     ss2 << "交易池交易数: " << mempool.size() << " 预测序列交易数: " << umap_vecPrecictTxid[h].size() << " \n";
     
     // 5. 记录交易序列中多余的交易，并将它们放入下一个区块的预测序列中
     ss2 << "预测范围内多余交易索引：\n[";
     for (int idx = 0; idx <= vtxHash.size(); ++idx) {
         if (hitHash[idx] == 0) {
-            if (idx>=firstNumber && idx <= lastNumber)
+            if (idx>=minNumber && idx <= maxNumber)
                 ss2 << idx << " ";
             umap_setPredictTxid[h + 1].insert(vtxHash[idx]);
             umap_vecPrecictTxid[h + 1].emplace_back(vtxHash[idx]);
