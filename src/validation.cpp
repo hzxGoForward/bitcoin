@@ -110,17 +110,6 @@ void compareBlock(const std::shared_ptr<const CBlock>& pblock, const int h)
         return;
     }
 
-    // 1. 从pblock交易列表倒序寻找存在于umap_predictBlkTxInfo中的交易id
-    //uint256 txid_tail;
-    //for (int i = pblock->vtx.size() - 1; i > 0; --i) {
-    //    const auto& txid = pblock->vtx[i]->GetHash();
-    //    if (umap_setPredictTxid[h].count(txid)) {
-    //        txid_tail = txid;
-    //        break;
-    //    }
-    //}
-    // printf("current function: %s, line number: %d\n", __FUNCTION__, __LINE__);
-
     // 2. 基于预测序列中的交易，预测下一个区块的交易，遇到txid_tail后结束，或者预测交易序列是当前2倍就停止
     CScript pubKey;
     pubKey << 0 << OP_TRUE;
@@ -129,35 +118,34 @@ void compareBlock(const std::shared_ptr<const CBlock>& pblock, const int h)
     basm.addBlockWeight(200000);
     auto blk = basm.CreateNewBlock(pubKey);
     std::vector<uint256> vtxHash;
-    // 除去coinbase交易之外，将其他交易哈希放入vtxHash
-    for (int i = 1; i < blk->block.vtx.size(); ++i) {
-        vtxHash.push_back(blk->block.vtx[i]->GetHash());
-    }
-    // basm.predictNextBlockTxHash(umap_setPredictTxid[h], txid_tail, pblock->vtx.size()*2, vtxHash);
-    // printf("current function: %s, line number: %d\n", __FUNCTION__, __LINE__);
-
-    // 3. 记录预测的交易序列中每个交易的哈希值的索引
-    map<uint256, int> mapTxidIndex;
+    
+    // 3. 除去coinbase交易之外，将其他交易哈希放入vtxHash 并且记录预测的交易序列中每个交易的哈希值的索引
     ostringstream ss1;
-    ss1 << "进入时间 交易哈希 对应索引 交易费用 交易大小 交易权重 \n";
-    for (size_t i = 0; i < vtxHash.size(); ++i) {
-        const auto& txid = vtxHash[i];
+    ss1 << "进入时间 交易哈希 对应索引 交易费用 交易大小 交易权重 所属组别  费率\n";
+    map<uint256, int> mapTxidIndex;
+    int totalSize = 0;
+    for (int i = 1; i < blk->block.vtx.size(); ++i) {
+        const auto& txid = blk->block.vtx[i]->GetHash();
+        vtxHash.push_back(txid);
         mapTxidIndex[txid] = i;
+        
         auto it = mempool.mapTx.find(txid);
-        assert(it != mempool.mapTx.end());
         auto info = mempool.info(txid);
-        string entertime = FormatISO8601DateTime(it->GetTime());
-        size_t txSize = it->GetTxSize();
-        size_t txWeight = it->GetTxWeight();
-        CAmount fee = it->GetFee();
-        ss1 << entertime << " " << txid.ToString() << " " << i << " " << fee <<" "<< txSize << " " << txWeight << " \n";
-                                                                                                                  
+        ss1 << FormatISO8601DateTime(it->GetTime())<<" ";                   // 进入交易池时间
+        ss1 << txid.ToString() << " ";                                      // 交易哈希
+        ss1 << i << " ";                                                    // 对应索引
+        ss1 << it->GetFee();                                                // 交易费用                                           
+        ss1 << it->GetTxSize() << " ";                                      // 交易大小
+        ss1 << it->GetTxWeight()<<" ";                                      // 交易权重
+        ss1 << blk->vTxGroup[i] << " ";                                     // 交易组别
+        ss1 << blk->vTxFeeRate[i] << " ";                                   // 交易费率
+        totalSize += it->GetTxSize();
     }
     ss1 << "预测时间: " << now << " \n";
     ss1 << "交易个数: " << vtxHash.size() << " \n";
-    printf("current function: %s, line number: %d\n", __FUNCTION__, __LINE__);
+    ss1 << "交易总量(byte): " << totalSize << " \n";
 
-    // 4. 遍历pblock中每一笔交易，记录每个交易对应的预测序列中的交易号
+    // 4. 遍历新收到区块中每一笔交易，记录每个交易对应的预测序列中的交易号
     ostringstream ss2, tmpSS;                                       // tmpSS 用于记录顺序颠倒的交易序列
     ss2 << "进入时间 交易哈希 对应索引 交易费用 交易大小 交易权重 \n";
     int predBlkHitCnt = 0;                                          // 预测交易序列命中次数

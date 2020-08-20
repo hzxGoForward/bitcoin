@@ -9,12 +9,13 @@
 using namespace std;
 static int64_t writeDiff = 120; // 120秒写一次
 static int64_t lastMempoolRecordTime = 0;
-static string dir = "/home2/zxhu/bitcoin-0.19.0_hzx/experiment20200820_2/";
+static string dir = "/home2/zxhu/bitcoin-0.19.0_hzx/experiment20200820_3/";
 /*
-这一版本中，预测新交易时，取消了区块验证过程
-在收到新的区块后，进行预测时增加权重100000
-每次预测后，检查生成的交易是否在预测序列中，如果在其中才算成功。
-文件保存位置为experiment20200820_2
+1. 这一版本中，预测新交易时，取消了区块验证过程
+2. 在收到新的区块后，进行预测时增加权重100000
+3. 每次预测后，检查生成的交易是否在预测序列中，如果在其中才算成功。
+4. 每次预测一批交易的时候，记录这批交易加入区块时隶属的组合费率
+5. 文件保存位置为experiment20200820_3
 */
 
 

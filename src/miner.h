@@ -36,6 +36,11 @@ struct CBlockTemplate
     std::vector<CAmount> vTxFees;
     std::vector<int64_t> vTxSigOpsCost;
     std::vector<unsigned char> vchCoinbaseCommitment;
+    // TODO START BY HZX
+    // vTxFeeRate记录每个交易加入时的费率
+    std::vector<double> vTxFeeRate;
+    // vTxGroup记录每个交易加入时的组
+    std::vector<int> vTxGroup;
 };
 
 // Container for tracking updates to ancestor feerate as we include (parent)

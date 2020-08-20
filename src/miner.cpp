@@ -106,7 +106,10 @@ std::unique_ptr<CBlockTemplate> BlockAssembler::CreateNewBlock(const CScript& sc
     pblock->vtx.emplace_back();
     pblocktemplate->vTxFees.push_back(-1); // updated at end
     pblocktemplate->vTxSigOpsCost.push_back(-1); // updated at end
-
+    // TODO START BY HZX
+    pblocktemplate->vTxFeeRate.push_back(0);
+    pblocktemplate->vTxGroup.push_back(0);
+    // TODO END BY HZX
     LOCK2(cs_main, mempool.cs);
     CBlockIndex* pindexPrev = ::ChainActive().Tip();
     assert(pindexPrev != nullptr);
@@ -322,7 +325,10 @@ void BlockAssembler::addPackageTxs(int &nPackagesSelected, int &nDescendantsUpda
     // mempool has a lot of entries.
     const int64_t MAX_CONSECUTIVE_FAILURES = 1000;
     int64_t nConsecutiveFailed = 0;
-
+    // TODO START BY HZX
+    //  记录每一笔交易加入时所在的组
+    int group = 0;
+    // TODO END BY HZX
     while (mi != mempool.mapTx.get<ancestor_score>().end() || !mapModifiedTx.empty())
     {
         // First try to find a new transaction in mapTx to evaluate.
@@ -429,13 +435,18 @@ void BlockAssembler::addPackageTxs(int &nPackagesSelected, int &nDescendantsUpda
         // Package can be added. Sort the entries in a valid order.
         std::vector<CTxMemPool::txiter> sortedEntries;
         SortForBlock(ancestors, sortedEntries);
-
+        
         for (size_t i=0; i<sortedEntries.size(); ++i) {
             AddToBlock(sortedEntries[i]);
             // Erase from the modified set, if present
             mapModifiedTx.erase(sortedEntries[i]);
-        }
 
+            // TODO START BY HZX
+            pblocktemplate->vTxFeeRate.push_back(lastTxFeeRate);
+            pblocktemplate->vTxGroup.push_back(group);
+        }
+        group++;
+        // TODO END BY HZX
         ++nPackagesSelected;
 
         // Update transactions that depend on each of these
