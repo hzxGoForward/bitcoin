@@ -134,11 +134,11 @@ void compareBlock(const std::shared_ptr<const CBlock>& pblock, const int h)
         ss1 << FormatISO8601DateTime(it->GetTime())<<" ";                   // 进入交易池时间
         ss1 << txid.ToString() << " ";                                      // 交易哈希
         ss1 << i << " ";                                                    // 对应索引
-        ss1 << it->GetFee();                                                // 交易费用                                           
+        ss1 << it->GetFee()<<" ";                                           // 交易费用                                           
         ss1 << it->GetTxSize() << " ";                                      // 交易大小
         ss1 << it->GetTxWeight()<<" ";                                      // 交易权重
         ss1 << blk->vTxGroup[i] << " ";                                     // 交易组别
-        ss1 << blk->vTxFeeRate[i] << " \n";                                   // 交易费率
+        ss1 << blk->vTxFeeRate[i] << " \n";                                 // 交易费率
         totalSize += it->GetTxSize();
     }
     ss1 << "预测时间: " << now << " \n";
