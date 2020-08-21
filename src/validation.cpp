@@ -114,8 +114,8 @@ void compareBlock(const std::shared_ptr<const CBlock>& pblock, const int h)
     CScript pubKey;
     pubKey << 0 << OP_TRUE;
     BlockAssembler basm(Params());
-    // 增加权重200000，
-    basm.addBlockWeight(200000);
+    // 预测区块权重为合法区块的倍，
+    basm.addBlockWeight(4000000-4000);
     auto blk = basm.CreateNewBlock(pubKey);
     std::vector<uint256> vtxHash;
     

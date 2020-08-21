@@ -406,7 +406,7 @@ void BlockAssembler::addPackageTxs(int &nPackagesSelected, int &nDescendantsUpda
 
         // TODO START BY HZX求出该交易以及其依赖的祖先交易的费率
         double tx_mod_fee = 0.0, tx_sz = 0.0;
-        CompareTxMemPoolEntryByDescendantScore().GetModFeeAndSize(*iter, tx_mod_fee, tx_sz);
+        CompareTxMemPoolEntryByAncestorFee().GetModFeeAndSize(*iter, tx_mod_fee, tx_sz);
         assert(tx_sz > 0);
         lastTxFeeRate = tx_mod_fee / tx_sz; // 假设 tx_sz>0
         // TODO END BY HZX
