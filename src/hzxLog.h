@@ -9,7 +9,7 @@
 using namespace std;
 static int64_t writeDiff = 120; // 120秒写一次
 static int64_t lastMempoolRecordTime = 0;
-static string dir = "/home2/zxhu/bitcoin-0.19.0_hzx/experiment20200821/";
+static string dir = "/home2/zxhu/bitcoin-0.19.0_hzx/experiment20200825/";
 /*
 1. 这一版本中，预测新交易时，取消了区块验证过程
 2. 在收到新的区块后，进行预测时增加权重100000

@@ -3894,7 +3894,7 @@ bool CChainState::AcceptBlock(const std::shared_ptr<const CBlock>& pblock, CVali
             // 如果为该区块预测过交易,则比较预测准确性
             if (umap_predictBlkLastTxHash.count(blkHeight) && umap_setPredictTxid.count(blkHeight) && umap_vecPrecictTxid.count(blkHeight)) {
                 printf("predicted block for %d, ------current function: %s, line number: %d\n",blkHeight,  __FUNCTION__, __LINE__);
-                compareBlock(pblock, blkHeight);                // 比较预测区块中的交易和新区块中的交易
+                compareBlock(pblock, blkHeight);                  // 比较预测区块中的交易和新区块中的交易
                 umap_setPredictTxid.erase(blkHeight);             // 删除
                 umap_predictBlkLastTxHash.erase(blkHeight);       // 删除
                 umap_vecPrecictTxid.erase(blkHeight);             // 删除
@@ -3906,7 +3906,7 @@ bool CChainState::AcceptBlock(const std::shared_ptr<const CBlock>& pblock, CVali
     }
     // TODO END BY HZX
 
-
+    printf("current function: %s, line number: %d\n", __FUNCTION__, __LINE__);
     if (!fRequested) {  // If we didn't ask for it:
         if (pindex->nTx != 0) return true;    // This is a previously-processed block that was pruned
         if (!fHasMoreOrSameWork) return true; // Don't process less-work chains
@@ -3918,7 +3918,7 @@ bool CChainState::AcceptBlock(const std::shared_ptr<const CBlock>& pblock, CVali
         // request; don't process these.
         if (pindex->nChainWork < nMinimumChainWork) return true;
     }
-
+    printf("current function: %s, line number: %d\n", __FUNCTION__, __LINE__);
     if (!CheckBlock(block, state, chainparams.GetConsensus()) ||
         !ContextualCheckBlock(block, state, chainparams.GetConsensus(), pindex->pprev)) {
         assert(IsBlockReason(state.GetReason()));
@@ -3928,12 +3928,12 @@ bool CChainState::AcceptBlock(const std::shared_ptr<const CBlock>& pblock, CVali
         }
         return error("%s: %s", __func__, FormatStateMessage(state));
     }
-
+    printf("current function: %s, line number: %d\n", __FUNCTION__, __LINE__);
     // Header is valid/has work, merkle tree and segwit merkle tree are good...RELAY NOW
     // (but if it does not build on our best tip, let the SendMessages loop relay it)
     if (!IsInitialBlockDownload() && m_chain.Tip() == pindex->pprev)
         GetMainSignals().NewPoWValidBlock(pindex, pblock);
-
+    printf("current function: %s, line number: %d\n", __FUNCTION__, __LINE__);
     // Write block to history file
     if (fNewBlock) *fNewBlock = true;
     try {
@@ -3943,12 +3943,13 @@ bool CChainState::AcceptBlock(const std::shared_ptr<const CBlock>& pblock, CVali
             return false;
         }
         ReceivedBlockTransactions(block, pindex, blockPos, chainparams.GetConsensus());
+        printf("current function: %s, line number: %d\n", __FUNCTION__, __LINE__);
     } catch (const std::runtime_error& e) {
         return AbortNode(state, std::string("System error: ") + e.what());
     }
 
     FlushStateToDisk(chainparams, state, FlushStateMode::NONE);
-
+    printf("current function: %s, line number: %d\n", __FUNCTION__, __LINE__);
     CheckBlockIndex(chainparams.GetConsensus());
     printf("current function: %s, line number: %d\n", __FUNCTION__, __LINE__);
     return true;
