@@ -385,6 +385,7 @@ void BlockAssembler::addPackageTxs(int &nPackagesSelected, int &nDescendantsUpda
         }
 
         // TODO START BY HZX 判定交易是否超出规定大小？或者检查签名的数量超标？(签名检查最多8000次)
+        // 如果一笔交易因为大小超标而没有成功加入到区块中，其子孙交易与该交易的大小之和一定超标，因此不用将子孙交易加入failedTx集合中
         if (!TestPackage(packageSize, packageSigOpsCost)) {
             if (fUsingModified) {
                 // Since we always look at the best entry in mapModifiedTx,
@@ -405,8 +406,8 @@ void BlockAssembler::addPackageTxs(int &nPackagesSelected, int &nDescendantsUpda
         }
 
         // TODO START BY HZX求出该交易以及其依赖的祖先交易的费率
-        double tx_mod_fee = 0.0, tx_sz = 0.0;
-        CompareTxMemPoolEntryByAncestorFee().GetModFeeAndSize(*iter, tx_mod_fee, tx_sz);
+        double tx_mod_fee = packageFees, tx_sz = packageSize;
+        // CompareTxMemPoolEntryByAncestorFee().GetModFeeAndSize(*iter, tx_mod_fee, tx_sz);
         assert(tx_sz > 0);
         lastTxFeeRate = tx_mod_fee / tx_sz; // 假设 tx_sz>0
         // TODO END BY HZX
