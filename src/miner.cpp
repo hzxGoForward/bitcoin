@@ -187,7 +187,7 @@ std::unique_ptr<CBlockTemplate> BlockAssembler::CreateNewBlock(const CScript& sc
 // TODO START BY HZX
 std::unique_ptr<CBlockTemplate> BlockAssembler::CreateNewBlockWithLimit(const CScript& scriptPubKeyIn, const int ntxLimit, std::set<uint256>& skipTxHash) {
     int64_t nTimeStart = GetTimeMicros();
-
+    printf("current function: %s, line number: %d\n", __FUNCTION__, __LINE__);
     resetBlock();
 
     pblocktemplate.reset(new CBlockTemplate());
@@ -233,8 +233,9 @@ std::unique_ptr<CBlockTemplate> BlockAssembler::CreateNewBlockWithLimit(const CS
 
     int nPackagesSelected = 0;
     int nDescendantsUpdated = 0;
+    printf("current function: %s, line number: %d\n", __FUNCTION__, __LINE__);
     addPackageTxsWithLimit(ntxLimit, nPackagesSelected, nDescendantsUpdated, skipTxHash);
-
+    printf("current function: %s, line number: %d\n", __FUNCTION__, __LINE__);
     int64_t nTime1 = GetTimeMicros();
 
     m_last_block_num_txs = nBlockTx;
@@ -261,7 +262,7 @@ std::unique_ptr<CBlockTemplate> BlockAssembler::CreateNewBlockWithLimit(const CS
     pblocktemplate->vTxSigOpsCost[0] = WITNESS_SCALE_FACTOR * GetLegacySigOpCount(*pblock->vtx[0]);
 
     int64_t nTime2 = GetTimeMicros();
-
+    printf("current function: %s, line number: %d\n", __FUNCTION__, __LINE__);
     return std::move(pblocktemplate);
 }
 // TODO END BY HZX
