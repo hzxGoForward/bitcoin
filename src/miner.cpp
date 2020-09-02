@@ -690,7 +690,7 @@ void BlockAssembler::addPackageTxsWithLimit(const int ntxLimit, int& nPackagesSe
             if (fUsingModified) {
                 mapModifiedTx.get<ancestor_score>().erase(modit);
             } else {
-                // 如果来自mempool，则++mi
+                // 如果来自mempool，则++mi，之前的版本忽略了这一句，导致bug
                 ++mi;
             }
             skipTxHash.insert(txid);
