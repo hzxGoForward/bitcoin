@@ -42,13 +42,13 @@ int64_t UpdateTime(CBlockHeader* pblock, const Consensus::Params& consensusParam
     return nNewTime - nOldTime;
 }
 
-// TODO START BY HZX 默认大小除去了4000，留给coinbase交易
+// TODO START BY HZX 默认大小除去了4000,留给coinbase交易
 BlockAssembler::Options::Options() {
     blockMinFeeRate = CFeeRate(DEFAULT_BLOCK_MIN_TX_FEE);
     nBlockMaxWeight = DEFAULT_BLOCK_MAX_WEIGHT;
 }
 
-// TODO START BY HZX 即使指定了区块大小，在装备器中会限定在4K-4000以内
+// TODO START BY HZX 即使指定了区块大小,在装备器中会限定在4K-4000以内
 BlockAssembler::BlockAssembler(const CChainParams& params, const Options& options) : chainparams(params)
 {
     blockMinFeeRate = options.blockMinFeeRate;
@@ -169,9 +169,9 @@ std::unique_ptr<CBlockTemplate> BlockAssembler::CreateNewBlock(const CScript& sc
     pblock->nNonce         = 0;
     pblocktemplate->vTxSigOpsCost[0] = WITNESS_SCALE_FACTOR * GetLegacySigOpCount(*pblock->vtx[0]);
 
-    // TODO START BY HZX 直接注释掉这一段代码，在进行区块预测的时候不检查合法性
-    // 同时本地生成区块时可能超出大小，因此不需要检查区块大小。
-    // 同时本地生成区块时可能超出大小，因此不需要检查区块大小。
+    // TODO START BY HZX 直接注释掉这一段代码,在进行区块预测的时候不检查合法性
+    // 同时本地生成区块时可能超出大小,因此不需要检查区块大小。
+    // 同时本地生成区块时可能超出大小,因此不需要检查区块大小。
     //CValidationState state;
     //if (!TestBlockValidity(state, chainparams, *pblock, pindexPrev, false, false)) {
     //    throw std::runtime_error(strprintf("%s: TestBlockValidity failed: %s", __func__, FormatStateMessage(state)));
@@ -450,8 +450,8 @@ void BlockAssembler::addPackageTxs(int &nPackagesSelected, int &nDescendantsUpda
         // contain anything that is inBlock.
         assert(!inBlock.count(iter));
 
-        // TODO START BY HZX iter指向modit->iter或者mempool中交易，
-        // 但是modit中交易的大小、费用以及签名开销不能用交易池中交易计算，因此有了下面if判定。
+        // TODO START BY HZX iter指向modit->iter或者mempool中交易,
+        // 但是modit中交易的大小、费用以及签名开销不能用交易池中交易计算,因此有了下面if判定。
         uint64_t packageSize = iter->GetSizeWithAncestors();
         CAmount packageFees = iter->GetModFeesWithAncestors();
         int64_t packageSigOpsCost = iter->GetSigOpCostWithAncestors();
@@ -467,7 +467,7 @@ void BlockAssembler::addPackageTxs(int &nPackagesSelected, int &nDescendantsUpda
         }
 
         // TODO START BY HZX 判定交易是否超出规定大小？或者检查签名的数量超标？(签名检查最多8000次)
-        // 如果一笔交易因为大小超标而没有成功加入到区块中，其子孙交易与该交易的大小之和一定超标，因此不用将子孙交易加入failedTx集合中
+        // 如果一笔交易因为大小超标而没有成功加入到区块中,其子孙交易与该交易的大小之和一定超标,因此不用将子孙交易加入failedTx集合中
         if (!TestPackage(packageSize, packageSigOpsCost)) {
             if (fUsingModified) {
                 // Since we always look at the best entry in mapModifiedTx,
@@ -498,7 +498,7 @@ void BlockAssembler::addPackageTxs(int &nPackagesSelected, int &nDescendantsUpda
         uint64_t nNoLimit = std::numeric_limits<uint64_t>::max();
         std::string dummy;
         mempool.CalculateMemPoolAncestors(*iter, ancestors, nNoLimit, nNoLimit, nNoLimit, nNoLimit, dummy, false);
-        // TODO START BY HZX 如果交易的祖先已经添加到block中，则应该删除
+        // TODO START BY HZX 如果交易的祖先已经添加到block中,则应该删除
         onlyUnconfirmed(ancestors);
         // TODO START BY HZX 加入交易自身
         ancestors.insert(iter);
@@ -570,8 +570,9 @@ void BlockAssembler::addPackageTxsWithLimit(const int ntxLimit, int& nPackagesSe
         }
 
         // TODO START BY HZX
-        // 如果这笔交易在skipTxHash中，则跳过
-        if (mi != mempool.mapTx.get<ancestor_score>().end() && skipTxHash.count(iter->GetSharedTx()->GetHash())){
+        // 如果这笔交易在skipTxHash中,则跳过
+        if (mi != mempool.mapTx.get<ancestor_score>().end() && skipTxHash.count(iter->GetSharedTx()->GetHash())>0){
+            printf("%s:%d, %s has been skipped, ", __FUNCTION__, __LINE__, iter->GetSharedTx()->GetHash().ToString().data());
             ++mi;
             continue;
         }
@@ -607,8 +608,8 @@ void BlockAssembler::addPackageTxsWithLimit(const int ntxLimit, int& nPackagesSe
         // contain anything that is inBlock.
         assert(!inBlock.count(iter));
 
-        // TODO START BY HZX iter指向modit->iter或者mempool中交易，
-        // 但是modit中交易的大小、费用以及签名开销不能用交易池中交易计算，因此有了下面if判定。
+        // TODO START BY HZX iter指向modit->iter或者mempool中交易,
+        // 但是modit中交易的大小、费用以及签名开销不能用交易池中交易计算,因此有了下面if判定。
         uint64_t packageSize = iter->GetSizeWithAncestors();
         CAmount packageFees = iter->GetModFeesWithAncestors();
         int64_t packageSigOpsCost = iter->GetSigOpCostWithAncestors();
@@ -624,7 +625,7 @@ void BlockAssembler::addPackageTxsWithLimit(const int ntxLimit, int& nPackagesSe
         }
 
         // TODO START BY HZX 判定交易是否超出规定大小？或者检查签名的数量超标？(签名检查最多8000次)
-        // 如果一笔交易因为大小超标而没有成功加入到区块中，其子孙交易与该交易的大小之和一定超标，因此不用将子孙交易加入failedTx集合中
+        // 如果一笔交易因为大小超标而没有成功加入到区块中,其子孙交易与该交易的大小之和一定超标,因此不用将子孙交易加入failedTx集合中
         if (!TestPackage(packageSize, packageSigOpsCost)) {
             if (fUsingModified) {
                 // Since we always look at the best entry in mapModifiedTx,
@@ -655,30 +656,10 @@ void BlockAssembler::addPackageTxsWithLimit(const int ntxLimit, int& nPackagesSe
         uint64_t nNoLimit = std::numeric_limits<uint64_t>::max();
         std::string dummy;
         mempool.CalculateMemPoolAncestors(*iter, ancestors, nNoLimit, nNoLimit, nNoLimit, nNoLimit, dummy, false);
-        // TODO START BY HZX 如果交易的祖先已经添加到block中，则应该删除
+        // TODO START BY HZX 如果交易的祖先已经添加到block中,则应该删除
         onlyUnconfirmed(ancestors);
         // TODO START BY HZX 加入交易自身
         ancestors.insert(iter);
-
-        // 遍历ancestors中的所有交易，检查交易是否存在于skiptxHash中
-        bool skip = false;
-        for (CTxMemPool::setEntries::iterator iit = ancestors.begin(); iit != ancestors.end(); ++iit) {
-            // 如果存在于skiptxHash或者failedTx中，则将该交易加入failedTx中
-            const uint256& txid = (*iit)->GetSharedTx()->GetHash();
-            if (skipTxHash.count(txid)) {
-                skip = true;
-                break;
-            } 
-        }
-        // 如果需要跳过，则设置
-        if (skip) {
-            if (fUsingModified) {
-                mapModifiedTx.get<ancestor_score>().erase(modit);
-                failedTx.insert(iter);
-            }
-            skipTxHash.insert(iter->GetSharedTx()->GetHash());
-            continue;
-        }
 
         // Test if all tx's are Final
         if (!TestPackageTransactions(ancestors)) {
@@ -686,6 +667,28 @@ void BlockAssembler::addPackageTxsWithLimit(const int ntxLimit, int& nPackagesSe
                 mapModifiedTx.get<ancestor_score>().erase(modit);
                 failedTx.insert(iter);
             }
+            continue;
+        }
+
+        // 遍历ancestors中的所有交易,检查交易是否存在于skiptxHash中
+        bool skip = false;
+        for (CTxMemPool::setEntries::iterator iit = ancestors.begin(); iit != ancestors.end(); ++iit) {
+            // 如果存在于skiptxHash或者failedTx中,则将该交易加入failedTx中
+            const uint256& txid = (*iit)->GetSharedTx()->GetHash();
+            if (skipTxHash.count(txid)) {
+                printf("%s: %d, %s exists in skipTxHash, %s has been skipped\n", __FUNCTION__, __LINE__, txid.ToString().data(), iter->GetSharedTx()->GetHash().ToString().data());
+                skip = true;
+                break;
+            }
+        }
+        // 如果需要跳过,则设置
+        if (skip) {
+            if (fUsingModified) {
+                mapModifiedTx.get<ancestor_score>().erase(modit);
+            }
+            const uint256& txid = iter->GetSharedTx()->GetHash();
+            skipTxHash.insert(txid);
+            printf("%s:%d, %s has been skipped and put into skipTxHash", __FUNCTION__, __LINE__, txid.ToString().data());
             continue;
         }
 
@@ -713,9 +716,11 @@ void BlockAssembler::addPackageTxsWithLimit(const int ntxLimit, int& nPackagesSe
         nDescendantsUpdated += UpdatePackagesForAdded(ancestors, mapModifiedTx);
 
         // TODO START BY HZX
-        // 如果交易数量达到上限，则跳过
-        if (inBlock.size() >= ntxLimit)
+        // 如果交易数量达到上限,则跳过
+        if (inBlock.size() >= ntxLimit) {
+            printf("current txcnt: %d exceed limit: %d, exit!---------\n", static_cast<int>(inBlock.size()), static_cast<int>(ntxLimit));
             break;
+        }
         // TODO END BY HZX
     }
 }
@@ -723,7 +728,7 @@ void BlockAssembler::addPackageTxsWithLimit(const int ntxLimit, int& nPackagesSe
 
 
 
-// 利用mappredictBlkTxInfo中的所有txid生成一系列交易，如果遇到txid_tail或者交易数超过一定量就停止。
+// 利用mappredictBlkTxInfo中的所有txid生成一系列交易,如果遇到txid_tail或者交易数超过一定量就停止。
 void BlockAssembler::predictNextBlockTxHash(const std::set<uint256>& mappredictBlkTxInfo, const uint256& txid_tail, const int txCntLimit, std::vector<uint256>& vecPredictTxhash)
 {
     // mapModifiedTx will store sorted packages after they are modified
@@ -788,7 +793,7 @@ void BlockAssembler::predictNextBlockTxHash(const std::set<uint256>& mappredictB
         }
 
         printf("current function: %s, line number: %d\n", __FUNCTION__, __LINE__);
-        // 寻找该节点的祖先交易，并且删除已经存在于setTx中的祖先交易
+        // 寻找该节点的祖先交易,并且删除已经存在于setTx中的祖先交易
         CTxMemPool::setEntries ancestors;
         uint64_t nNoLimit = std::numeric_limits<uint64_t>::max();
         std::string dummy;
@@ -833,7 +838,7 @@ void BlockAssembler::predictNextBlockTxHash(const std::set<uint256>& mappredictB
         // Update transactions that depend on each of these
         UpdatePackagesForAdded(ancestors, mapModifiedTx);
         printf("exit the function : %s, line number: %d\n", __FUNCTION__, __LINE__);
-        // TODO START BY HZX 如果遇到最后一笔交易，跳过
+        // TODO START BY HZX 如果遇到最后一笔交易,跳过
         if (iter->GetSharedTx()->GetHash() == txid_tail || nBlockTx >= txCntLimit) {
             
             return;
