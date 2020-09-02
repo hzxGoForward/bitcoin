@@ -575,7 +575,7 @@ void BlockAssembler::addPackageTxsWithLimit(const int ntxLimit, int& nPackagesSe
         // TODO START BY HZX
         // 如果这笔交易在skipTxHash中,则跳过
         if (mi != mempool.mapTx.get<ancestor_score>().end() && skipTxHash.count(iter->GetSharedTx()->GetHash())>0){
-            const uint256& txid = iter->GetSharedTx()->GetHash();
+            const uint256& txid = mi->GetSharedTx()->GetHash();
             printf("%s has been skipped, ", txid.ToString().data());
             ++mi;
             continue;
