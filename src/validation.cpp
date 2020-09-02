@@ -87,11 +87,77 @@ void adjustPredictTxList(const int newBlockHeight) {
     for (size_t i = 1; i < ptemplate->block.vtx.size(); ++i) {
         const auto& txid = ptemplate->block.vtx[i]->GetHash();
         if (umap_setPredictTxid[newBlockHeight].count(txid) == 0) {
-            umap_setPredictTxid[newBlockHeight].emplace(txid);
+            umap_setPredictTxid[newBlockHeight].emplace(std::make_pair(txid, umap_setPredictTxid[newBlockHeight].size()));
             umap_vecPrecictTxid[newBlockHeight].emplace_back(txid);
         }
     }
     umap_predictBlkLastTxHash[newBlockHeight] = {ptemplate->block.vtx.back()->GetHash(), blockAssembler.lastTxFeeRate};
+}
+
+/// 根据已有的预测交易序列，对比新区块中的交易序列，找出需要跳过的交易集合，从maxIndex+1后续的预测序列不能纳入预测序列
+int getSkipTxHash(const std::shared_ptr<const CBlock>& pblock, const int h, std::set<uint256>& skipTxHash) {
+    int maxIndex = -1;
+    if (umap_setPredictTxid.count(h) == 0) {
+        printf("can not create skipTxHash for block %d, current function: % s, line number: % d\n ",h,  __FUNCTION__, __LINE__);
+        return maxIndex;
+    }
+    // 找出pblock中交易对应的最大的索引
+    for (size_t i = 0; i < pblock->vtx.size(); ++i) {
+        const auto& txid = pblock->vtx[i]->GetHash();
+        if (umap_setPredictTxid[h].count(txid)) {
+            maxIndex = max(maxIndex, umap_setPredictTxid[h][txid]);
+        }
+    }
+    printf("predicted block for %d, ------current function: %s, line number: %d\n", h, __FUNCTION__, __LINE__);
+    // 如果新区快中的交易哈希值，没有一个存在于预测序列中，则令其为最后一个索引
+    if (maxIndex == -1)
+        maxIndex = umap_setPredictTxid[h].size()-1;
+    printf("predicted block for %d, ------current function: %s, line number: %d\n", h, __FUNCTION__, __LINE__);
+    // 将maxIndex以后的所有哈希值放入skipTxHash中，这里加法不会溢出
+    for (int i = maxIndex + 1; i < umap_vecPrecictTxid[h].size(); ++i)
+        skipTxHash.insert(umap_vecPrecictTxid[h][i]);
+    printf("predicted block for %d, ------current function: %s, line number: %d\n", h, __FUNCTION__, __LINE__);
+    return maxIndex+1;
+}
+
+/// 找出需要跳过的交易序列，并据此生成预测序列并保存
+void CreatePredictTxSequence(const std::shared_ptr<const CBlock>& pblock, const int h) {
+    // 1. 找出需要跳过的交易序列
+    printf("predicted block for %d, ------current function: %s, line number: %d\n", h, __FUNCTION__, __LINE__);
+    auto now = FormatISO8601DateTime(GetTime());
+    std::set<uint256> skipTxHash;
+    int skipIndex = getSkipTxHash(pblock, h, skipTxHash);
+    if (skipIndex < 0)
+        return;
+    CScript pbk;
+    pbk << 0 << OP_TRUE;
+    BlockAssembler basmTmp(Params());
+    // 预测区块权重为合法区块的倍，
+    basmTmp.addBlockWeight(80000000);
+    printf("predicted block for %d, ------current function: %s, line number: %d\n", h, __FUNCTION__, __LINE__);
+    auto blk = basmTmp.CreateNewBlockWithLimit(pbk, pblock->vtx.size() * 2, skipTxHash);
+    printf("predicted block for %d, ------current function: %s, line number: %d\n", h, __FUNCTION__, __LINE__);
+    // 将该预测记录放入交易池中
+    ostringstream tmps;
+    int sz = 0;
+    string msg = "";
+    printf("predicted block for %d, ------current function: %s, line number: %d\n", h, __FUNCTION__, __LINE__);
+    for (int i = 1; i < blk->block.vtx.size(); ++i) {
+        const auto& txid = blk->block.vtx[i]->GetHash();
+        auto it = mempool.mapTx.find(txid);
+        auto info = mempool.info(txid);
+        const string entertime = FormatISO8601DateTime(it->GetTime());
+        msg = format("%s %s %d %lld %d %d %d %f \n", entertime.data(), txid.ToString().data(), i-1, it->GetFee(), it->GetTxSize(), it->GetTxWeight(), blk->vTxGroup[i], blk->vTxFeeRate[i]);
+        tmps << msg;
+        sz += it->GetTxSize();
+    }
+    msg = format("预测时间: %d\n交易个数: %d\n交易总量:%d \n", now.data(), blk->block.vtx.size(), sz);
+    tmps << msg << "跳过的的哈希值:\n";
+    for (auto& e : skipTxHash) {
+        tmps << e.ToString() << "\n";
+    }
+    printf("predicted block for %d, ------current function: %s, line number: %d\n", h, __FUNCTION__, __LINE__);
+    writeFile(to_string(h) + "_predBlk_withLimit.log", tmps.str());   
 }
 
 
@@ -109,8 +175,10 @@ void compareBlock(const std::shared_ptr<const CBlock>& pblock, const int h)
         writeFile(to_string(h) + "_predBlk_NewBlk_Compare.log", ss2.str());
         return;
     }
-
-    // 2. 基于预测序列中的交易，预测下一个区块的交易，遇到txid_tail后结束，或者预测交易序列是当前2倍就停止
+   
+    CreatePredictTxSequence(pblock, h);
+    printf("predicted block for %d, ------current function: %s, line number: %d\n",h,  __FUNCTION__, __LINE__);
+    // 2. 基于预测序列中的交易，预测下一个区块的交易
     CScript pubKey;
     pubKey << 0 << OP_TRUE;
     BlockAssembler basm(Params());
@@ -131,19 +199,24 @@ void compareBlock(const std::shared_ptr<const CBlock>& pblock, const int h)
         
         auto it = mempool.mapTx.find(txid);
         auto info = mempool.info(txid);
-        ss1 << FormatISO8601DateTime(it->GetTime())<<" ";                   // 进入交易池时间
-        ss1 << txid.ToString() << " ";                                      // 交易哈希
-        ss1 << i << " ";                                                    // 对应索引
-        ss1 << it->GetFee()<<" ";                                           // 交易费用                                           
-        ss1 << it->GetTxSize() << " ";                                      // 交易大小
-        ss1 << it->GetTxWeight()<<" ";                                      // 交易权重
-        ss1 << blk->vTxGroup[i] << " ";                                     // 交易组别
-        ss1 << blk->vTxFeeRate[i] << " \n";                                 // 交易费率
+        const string entertime = FormatISO8601DateTime(it->GetTime());
+        string msg = format("%s %s %d %lld %d %d %d %f \n", entertime.data(), txid.ToString().data(), i - 1, it->GetFee(), it->GetTxSize(), it->GetTxWeight(), blk->vTxGroup[i], blk->vTxFeeRate[i]);
+        ss1 << msg;
+        //ss1 << FormatISO8601DateTime(it->GetTime())<<" ";                   // 进入交易池时间
+        //ss1 << txid.ToString() << " ";                                      // 交易哈希
+        //ss1 << i << " ";                                                    // 对应索引
+        //ss1 << it->GetFee()<<" ";                                           // 交易费用                                           
+        //ss1 << it->GetTxSize() << " ";                                      // 交易大小
+        //ss1 << it->GetTxWeight()<<" ";                                      // 交易权重
+        //ss1 << blk->vTxGroup[i] << " ";                                     // 交易组别
+        //ss1 << blk->vTxFeeRate[i] << " \n";                                 // 交易费率
         totalSize += it->GetTxSize();
     }
-    ss1 << "预测时间: " << now << " \n";
-    ss1 << "交易个数: " << vtxHash.size() << " \n";
-    ss1 << "交易总量(byte): " << totalSize << " \n";
+    string msg = format("预测时间: %d\n交易个数: %d\n交易总量:%d\n", now.data(), vtxHash.size(), totalSize);
+    ss1 << msg;
+    //ss1 << "预测时间: " << now << " \n";
+    //ss1 << "交易个数: " << vtxHash.size() << " \n";
+    //ss1 << "交易总量(byte): " << totalSize << " \n";
 
     // 4. 遍历新收到区块中每一笔交易，记录每个交易对应的预测序列中的交易号
     ostringstream ss2, tmpSS;                                       // tmpSS 用于记录顺序颠倒的交易序列
@@ -189,7 +262,7 @@ void compareBlock(const std::shared_ptr<const CBlock>& pblock, const int h)
         }
         ss2 << entertime << " " << txid.ToString() << " " << index << " " << fee<<" "<< txSize << " " << txWeight << " \n";
     }
-    printf("current function: %s, line number: %d\n", __FUNCTION__, __LINE__);
+    // printf("current function: %s, line number: %d\n", __FUNCTION__, __LINE__);
     ss2 << "区块大小(Bytes): " << GetSerializeSize(pblock, PROTOCOL_VERSION) << " 交易个数: " << pblock->vtx.size() << " \n";
     ss2 << "接收时间: " << now << " 区块哈希: " << pblock->GetHash().ToString() << " \n";
     ss2 << "预测区块命中数: " << predBlkHitCnt << " 预测序列命中数: " << predTxHitCnt << " \n";
@@ -203,8 +276,8 @@ void compareBlock(const std::shared_ptr<const CBlock>& pblock, const int h)
         if (hitHash[idx] == 0) {
             if (idx>=minNumber && idx <= maxNumber)
                 ss2 << idx << " ";
-            umap_setPredictTxid[h + 1].insert(vtxHash[idx]);
-            umap_vecPrecictTxid[h + 1].emplace_back(vtxHash[idx]);
+            //umap_setPredictTxid[h + 1].emplace(std::make_pair(vtxHash[idx], umap_setPredictTxid[h + 1].size()));
+            //umap_vecPrecictTxid[h + 1].emplace_back(vtxHash[idx]);
         }
     }
     ss2 << "] \n";
@@ -3871,7 +3944,7 @@ bool CChainState::AcceptBlock(const std::shared_ptr<const CBlock>& pblock, CVali
     // TODO START BY HZX
     // 如果处于非下载状态，并且当前区块是最长合法的区块，判断该区块中交易，本地交易池已有的比例
     {
-        printf("current function: %s, line number: %d\n", __FUNCTION__, __LINE__);
+        // printf("current function: %s, line number: %d\n", __FUNCTION__, __LINE__);
         // 不处于下载状态，收到新区快比本地区块的高度之差不超过2
         if (!IsInitialBlockDownload() && pindex->nHeight - m_chain.Tip()->nHeight <=2 ) {
             size_t existCnt = 0;
@@ -3892,12 +3965,14 @@ bool CChainState::AcceptBlock(const std::shared_ptr<const CBlock>& pblock, CVali
             writeNormalRecv(msg, time.substr(0, 10) + "_normalBlockRecv.log");
             printf("detect whether predict %d block \n", blkHeight);
             // 如果为该区块预测过交易,则比较预测准确性
-            if (umap_predictBlkLastTxHash.count(blkHeight) && umap_setPredictTxid.count(blkHeight) && umap_vecPrecictTxid.count(blkHeight)) {
+            if (umap_setPredictTxid.count(blkHeight) && umap_vecPrecictTxid.count(blkHeight)) {
                 printf("predicted block for %d, ------current function: %s, line number: %d\n",blkHeight,  __FUNCTION__, __LINE__);
                 compareBlock(pblock, blkHeight);                  // 比较预测区块中的交易和新区块中的交易
                 umap_setPredictTxid.erase(blkHeight);             // 删除
-                umap_predictBlkLastTxHash.erase(blkHeight);       // 删除
+                printf("predicted block for %d, ------current function: %s, line number: %d\n", blkHeight, __FUNCTION__, __LINE__);
+                // umap_predictBlkLastTxHash.erase(blkHeight);       // 删除
                 umap_vecPrecictTxid.erase(blkHeight);             // 删除
+                printf("predicted block for %d, ------current function: %s, line number: %d\n", blkHeight, __FUNCTION__, __LINE__);
             } else {
                 printf("not predicted block for %d ,current function: %s, line number: %d\n", blkHeight, __FUNCTION__, __LINE__);
             }

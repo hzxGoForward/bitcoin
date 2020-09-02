@@ -6,29 +6,58 @@
 #include <uint256.h>
 #include <unordered_map>
 #include <util/time.h>
+#include <string>
+#include <cstdarg>
 using namespace std;
 static int64_t writeDiff = 120; // 120秒写一次
 static int64_t lastMempoolRecordTime = 0;
-static string dir = "/home2/zxhu/bitcoin-0.19.0_hzx/experiment20200825/";
+static string dir = "/home2/zxhu/bitcoin-0.19.0_hzx/experiment20200902/";
 /*
 1. 这一版本中，预测新交易时，取消了区块验证过程
-2. 在收到新的区块后，进行预测时增加权重100000
+2. 在收到新的区块后，增加一个新功能，指定预测交易序列数，并且可以排除某些交易
 3. 每次预测后，检查生成的交易是否在预测序列中，如果在其中才算成功。
 4. 每次预测一批交易的时候，记录这批交易加入区块时隶属的组合费率
-5. 文件保存位置为experiment20200820_3
-6. 1. 修复compare中，预测交易序列的交易大小没有加上空格的bug。
-7. lastFeerate用comparebyDecendentSocre的bug。
+5. 文件保存位置为experiment20200903
+6. 修改umap_setPredictTxid中的value形式为map<uint256,int>的类型，其中int指示该元素的索引
+7. umap_predictBlkLastTxHash变量暂时不再使用
+8. 增加一个字符串format函数，方便输出和文件处理
 */
 
 
 /// int对应区块高度，set<uint256>表示对应某个高度下，纳入预测序列的所有交易集合，用于快速查询
-static unordered_map<int, set<uint256> > umap_setPredictTxid;
+static unordered_map<int, map<uint256, int>> umap_setPredictTxid;
 
 /// int 对应区块高度，uint256对应首次预测区块中最后一笔交易的哈希值和添加进入预测序列时的费率
 static unordered_map<int, pair<uint256, double>> umap_predictBlkLastTxHash;             
 
 /// int 对应区块高度，vector<uint256> 对应在这个高度下纳入预测序列的所有交易的哈希值，前面交易按交易费排序，后面按照时间排序
 static unordered_map<int, vector<uint256>> umap_vecPrecictTxid;
+
+static std::string format(const char* fmt, ...)
+{
+    // 定义两个va_list 类型的变量，这种变量可以用来处理变长参数：...
+    va_list args, args1;
+
+    // 初始化args
+    va_start(args, fmt);
+
+    // args1 是 args 的一个拷贝
+    va_copy(args1, args);
+
+    // 使用nullptr和0作为前两个参数来获取格式化这个变长参数列表所需要的字符串长度
+    // 使用 string(size_t n, char c) 构造函数，构造一个长度为n的字符串，内容为n个c的拷贝
+    string res(1 + vsnprintf(nullptr, 0, fmt, args1), 0);
+    // args1 任务完成，将其关闭，清理。
+    va_end(args1);
+
+    // 使用args来格式化要返回的字符串res， 指定长度size
+    vsnprintf(&res[0], res.size(), fmt, args);
+    // args 任务完成，关闭，清理
+    va_end(args);
+
+    return res;
+}
+
 
 // 写文件
 static void writeFile(const string& filename, const string& msg)

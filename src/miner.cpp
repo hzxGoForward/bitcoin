@@ -184,6 +184,88 @@ std::unique_ptr<CBlockTemplate> BlockAssembler::CreateNewBlock(const CScript& sc
     return std::move(pblocktemplate);
 }
 
+// TODO START BY HZX
+std::unique_ptr<CBlockTemplate> BlockAssembler::CreateNewBlockWithLimit(const CScript& scriptPubKeyIn, const int ntxLimit, std::set<uint256>& skipTxHash) {
+    int64_t nTimeStart = GetTimeMicros();
+
+    resetBlock();
+
+    pblocktemplate.reset(new CBlockTemplate());
+
+    if (!pblocktemplate.get())
+        return nullptr;
+    pblock = &pblocktemplate->block; // pointer for convenience
+
+    // Add dummy coinbase tx as first transaction
+    pblock->vtx.emplace_back();
+    pblocktemplate->vTxFees.push_back(-1);       // updated at end
+    pblocktemplate->vTxSigOpsCost.push_back(-1); // updated at end
+    // TODO START BY HZX
+    pblocktemplate->vTxFeeRate.push_back(0);
+    pblocktemplate->vTxGroup.push_back(0);
+    // TODO END BY HZX
+    LOCK2(cs_main, mempool.cs);
+    CBlockIndex* pindexPrev = ::ChainActive().Tip();
+    assert(pindexPrev != nullptr);
+    nHeight = pindexPrev->nHeight + 1;
+
+    pblock->nVersion = ComputeBlockVersion(pindexPrev, chainparams.GetConsensus());
+    // -regtest only: allow overriding block.nVersion with
+    // -blockversion=N to test forking scenarios
+    if (chainparams.MineBlocksOnDemand())
+        pblock->nVersion = gArgs.GetArg("-blockversion", pblock->nVersion);
+
+    pblock->nTime = GetAdjustedTime();
+    const int64_t nMedianTimePast = pindexPrev->GetMedianTimePast();
+
+    nLockTimeCutoff = (STANDARD_LOCKTIME_VERIFY_FLAGS & LOCKTIME_MEDIAN_TIME_PAST) ? nMedianTimePast : pblock->GetBlockTime();
+
+    // Decide whether to include witness transactions
+    // This is only needed in case the witness softfork activation is reverted
+    // (which would require a very deep reorganization).
+    // Note that the mempool would accept transactions with witness data before
+    // IsWitnessEnabled, but we would only ever mine blocks after IsWitnessEnabled
+    // unless there is a massive block reorganization with the witness softfork
+    // not activated.
+    // TODO: replace this with a call to main to assess validity of a mempool
+    // transaction (which in most cases can be a no-op).
+    fIncludeWitness = IsWitnessEnabled(pindexPrev, chainparams.GetConsensus());
+
+    int nPackagesSelected = 0;
+    int nDescendantsUpdated = 0;
+    addPackageTxsWithLimit(ntxLimit, nPackagesSelected, nDescendantsUpdated, skipTxHash);
+
+    int64_t nTime1 = GetTimeMicros();
+
+    m_last_block_num_txs = nBlockTx;
+    m_last_block_weight = nBlockWeight;
+
+    // Create coinbase transaction.
+    CMutableTransaction coinbaseTx;
+    coinbaseTx.vin.resize(1);
+    coinbaseTx.vin[0].prevout.SetNull();
+    coinbaseTx.vout.resize(1);
+    coinbaseTx.vout[0].scriptPubKey = scriptPubKeyIn;
+    coinbaseTx.vout[0].nValue = nFees + GetBlockSubsidy(nHeight, chainparams.GetConsensus());
+    coinbaseTx.vin[0].scriptSig = CScript() << nHeight << OP_0;
+    pblock->vtx[0] = MakeTransactionRef(std::move(coinbaseTx));
+    pblocktemplate->vchCoinbaseCommitment = GenerateCoinbaseCommitment(*pblock, pindexPrev, chainparams.GetConsensus());
+    pblocktemplate->vTxFees[0] = -nFees;
+
+
+    // Fill in header
+    pblock->hashPrevBlock = pindexPrev->GetBlockHash();
+    UpdateTime(pblock, chainparams.GetConsensus(), pindexPrev);
+    pblock->nBits = GetNextWorkRequired(pindexPrev, pblock, chainparams.GetConsensus());
+    pblock->nNonce = 0;
+    pblocktemplate->vTxSigOpsCost[0] = WITNESS_SCALE_FACTOR * GetLegacySigOpCount(*pblock->vtx[0]);
+
+    int64_t nTime2 = GetTimeMicros();
+
+    return std::move(pblocktemplate);
+}
+// TODO END BY HZX
+
 void BlockAssembler::onlyUnconfirmed(CTxMemPool::setEntries& testSet)
 {
     for (CTxMemPool::setEntries::iterator iit = testSet.begin(); iit != testSet.end(); ) {
@@ -455,6 +537,192 @@ void BlockAssembler::addPackageTxs(int &nPackagesSelected, int &nDescendantsUpda
     }
 }
 // TODO START BY HZX
+void BlockAssembler::addPackageTxsWithLimit(const int ntxLimit, int& nPackagesSelected, int& nDescendantsUpdated, std::set<uint256>& skipTxHash)
+{
+    // mapModifiedTx will store sorted packages after they are modified
+    // because some of their txs are already in the block
+    indexed_modified_transaction_set mapModifiedTx;
+    // Keep track of entries that failed inclusion, to avoid duplicate work
+    CTxMemPool::setEntries failedTx;
+
+    // Start by adding all descendants of previously added txs to mapModifiedTx
+    // and modifying them for their already included ancestors
+    UpdatePackagesForAdded(inBlock, mapModifiedTx);
+
+    CTxMemPool::indexed_transaction_set::index<ancestor_score>::type::iterator mi = mempool.mapTx.get<ancestor_score>().begin();
+    CTxMemPool::txiter iter;
+
+    // Limit the number of attempts to add transactions to the block when it is
+    // close to full; this is just a simple heuristic to finish quickly if the
+    // mempool has a lot of entries.
+    const int64_t MAX_CONSECUTIVE_FAILURES = 1000;
+    int64_t nConsecutiveFailed = 0;
+    // TODO START BY HZX
+    //  记录每一笔交易加入时所在的组
+    int group = 0;
+    // TODO END BY HZX
+    while (mi != mempool.mapTx.get<ancestor_score>().end() || !mapModifiedTx.empty()) {
+        // First try to find a new transaction in mapTx to evaluate.
+        if (mi != mempool.mapTx.get<ancestor_score>().end() &&
+            SkipMapTxEntry(mempool.mapTx.project<0>(mi), mapModifiedTx, failedTx)) {
+            ++mi;
+            continue;
+        }
+
+        // TODO START BY HZX
+        // 如果这笔交易在skipTxHash中，则跳过
+        if (mi != mempool.mapTx.get<ancestor_score>().end() && skipTxHash.count(iter->GetSharedTx()->GetHash())){
+            ++mi;
+            continue;
+        }
+        // TODO END BY HZX
+
+        // Now that mi is not stale, determine which transaction to evaluate:
+        // the next entry from mapTx, or the best from mapModifiedTx?
+        bool fUsingModified = false;
+
+        modtxscoreiter modit = mapModifiedTx.get<ancestor_score>().begin();
+        if (mi == mempool.mapTx.get<ancestor_score>().end()) {
+            // We're out of entries in mapTx; use the entry from mapModifiedTx
+            iter = modit->iter;
+            fUsingModified = true;
+        } else {
+            // Try to compare the mapTx entry to the mapModifiedTx entry
+            iter = mempool.mapTx.project<0>(mi);
+            if (modit != mapModifiedTx.get<ancestor_score>().end() &&
+                CompareTxMemPoolEntryByAncestorFee()(*modit, CTxMemPoolModifiedEntry(iter))) {
+                // The best entry in mapModifiedTx has higher score
+                // than the one from mapTx.
+                // Switch which transaction (package) to consider
+                iter = modit->iter;
+                fUsingModified = true;
+            } else {
+                // Either no entry in mapModifiedTx, or it's worse than mapTx.
+                // Increment mi for the next loop iteration.
+                ++mi;
+            }
+        }
+
+        // We skip mapTx entries that are inBlock, and mapModifiedTx shouldn't
+        // contain anything that is inBlock.
+        assert(!inBlock.count(iter));
+
+        // TODO START BY HZX iter指向modit->iter或者mempool中交易，
+        // 但是modit中交易的大小、费用以及签名开销不能用交易池中交易计算，因此有了下面if判定。
+        uint64_t packageSize = iter->GetSizeWithAncestors();
+        CAmount packageFees = iter->GetModFeesWithAncestors();
+        int64_t packageSigOpsCost = iter->GetSigOpCostWithAncestors();
+        if (fUsingModified) {
+            packageSize = modit->nSizeWithAncestors;
+            packageFees = modit->nModFeesWithAncestors;
+            packageSigOpsCost = modit->nSigOpCostWithAncestors;
+        }
+
+        if (packageFees < blockMinFeeRate.GetFee(packageSize)) {
+            // Everything else we might consider has a lower fee rate
+            return;
+        }
+
+        // TODO START BY HZX 判定交易是否超出规定大小？或者检查签名的数量超标？(签名检查最多8000次)
+        // 如果一笔交易因为大小超标而没有成功加入到区块中，其子孙交易与该交易的大小之和一定超标，因此不用将子孙交易加入failedTx集合中
+        if (!TestPackage(packageSize, packageSigOpsCost)) {
+            if (fUsingModified) {
+                // Since we always look at the best entry in mapModifiedTx,
+                // we must erase failed entries so that we can consider the
+                // next best entry on the next loop iteration
+                mapModifiedTx.get<ancestor_score>().erase(modit);
+                failedTx.insert(iter);
+            }
+
+            ++nConsecutiveFailed;
+
+            if (nConsecutiveFailed > MAX_CONSECUTIVE_FAILURES && nBlockWeight >
+                                                                     nBlockMaxWeight - 4000) {
+                // Give up if we're close to full and haven't succeeded in a while
+                break;
+            }
+            continue;
+        }
+
+        // TODO START BY HZX
+        // 求出该交易以及其依赖的祖先交易的费率
+        double tx_mod_fee = packageFees, tx_sz = packageSize;
+        assert(tx_sz > 0);
+        lastTxFeeRate = tx_mod_fee / tx_sz; // 假设 tx_sz>0
+        // TODO END BY HZX
+
+        CTxMemPool::setEntries ancestors;
+        uint64_t nNoLimit = std::numeric_limits<uint64_t>::max();
+        std::string dummy;
+        mempool.CalculateMemPoolAncestors(*iter, ancestors, nNoLimit, nNoLimit, nNoLimit, nNoLimit, dummy, false);
+        // TODO START BY HZX 如果交易的祖先已经添加到block中，则应该删除
+        onlyUnconfirmed(ancestors);
+        // TODO START BY HZX 加入交易自身
+        ancestors.insert(iter);
+
+        // 遍历ancestors中的所有交易，检查交易是否存在于skiptxHash中
+        bool skip = false;
+        for (CTxMemPool::setEntries::iterator iit = ancestors.begin(); iit != ancestors.end(); ++iit) {
+            // 如果存在于skiptxHash或者failedTx中，则将该交易加入failedTx中
+            const uint256& txid = (*iit)->GetSharedTx()->GetHash();
+            if (skipTxHash.count(txid)) {
+                skip = true;
+                break;
+            } 
+        }
+        // 如果需要跳过，则设置
+        if (skip) {
+            if (fUsingModified) {
+                mapModifiedTx.get<ancestor_score>().erase(modit);
+                failedTx.insert(iter);
+            }
+            skipTxHash.insert(iter->GetSharedTx()->GetHash());
+            continue;
+        }
+
+        // Test if all tx's are Final
+        if (!TestPackageTransactions(ancestors)) {
+            if (fUsingModified) {
+                mapModifiedTx.get<ancestor_score>().erase(modit);
+                failedTx.insert(iter);
+            }
+            continue;
+        }
+
+        // This transaction will make it in; reset the failed counter.
+        nConsecutiveFailed = 0;
+
+        // Package can be added. Sort the entries in a valid order.
+        std::vector<CTxMemPool::txiter> sortedEntries;
+        SortForBlock(ancestors, sortedEntries);
+
+        for (size_t i = 0; i < sortedEntries.size(); ++i) {
+            AddToBlock(sortedEntries[i]);
+            // Erase from the modified set, if present
+            mapModifiedTx.erase(sortedEntries[i]);
+
+            // TODO START BY HZX
+            pblocktemplate->vTxFeeRate.push_back(lastTxFeeRate);
+            pblocktemplate->vTxGroup.push_back(group);
+        }
+        group++;
+        // TODO END BY HZX
+        ++nPackagesSelected;
+
+        // Update transactions that depend on each of these
+        nDescendantsUpdated += UpdatePackagesForAdded(ancestors, mapModifiedTx);
+
+        // TODO START BY HZX
+        // 如果交易数量达到上限，则跳过
+        if (inBlock.size() >= ntxLimit)
+            break;
+        // TODO END BY HZX
+    }
+}
+
+
+
+
 // 利用mappredictBlkTxInfo中的所有txid生成一系列交易，如果遇到txid_tail或者交易数超过一定量就停止。
 void BlockAssembler::predictNextBlockTxHash(const std::set<uint256>& mappredictBlkTxInfo, const uint256& txid_tail, const int txCntLimit, std::vector<uint256>& vecPredictTxhash)
 {
