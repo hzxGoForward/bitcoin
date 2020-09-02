@@ -576,7 +576,7 @@ void BlockAssembler::addPackageTxsWithLimit(const int ntxLimit, int& nPackagesSe
         // 如果这笔交易在skipTxHash中,则跳过
         if (mi != mempool.mapTx.get<ancestor_score>().end() && skipTxHash.count(mi->GetSharedTx()->GetHash()) > 0) {
             const uint256& txid = mi->GetSharedTx()->GetHash();
-            printf("%s has been skipped, ", txid.ToString().data());
+            printf("%s has been skipped\n", txid.ToString().data());
             ++mi;
             continue;
         }
@@ -694,7 +694,7 @@ void BlockAssembler::addPackageTxsWithLimit(const int ntxLimit, int& nPackagesSe
                 ++mi;
             }
             skipTxHash.insert(txid);
-            printf("%s:%d, %s has been skipped and put into skipTxHash", __FUNCTION__, __LINE__, txid.ToString().data());
+            printf("%s:%d, %s has been skipped and put into skipTxHash\n", __FUNCTION__, __LINE__, txid.ToString().data());
             continue;
         }
 

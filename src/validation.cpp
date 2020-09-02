@@ -151,8 +151,8 @@ void CreatePredictTxSequence(const std::shared_ptr<const CBlock>& pblock, const 
         tmps << msg;
         sz += it->GetTxSize();
     }
-    msg = format("预测时间: %d\n交易个数: %d\n交易总量:%d \n", now.data(), blk->block.vtx.size(), sz);
-    tmps << msg << "跳过的的哈希值:\n";
+    msg = format("predict time: %s\ntx cnt: %d\ntotal tx size:%d \n", now.data(), blk->block.vtx.size(), sz);
+    tmps << msg << "skipped hash:\n";
     for (auto& e : skipTxHash) {
         tmps << e.ToString() << "\n";
     }
@@ -170,7 +170,7 @@ void compareBlock(const std::shared_ptr<const CBlock>& pblock, const int h)
         ostringstream ss2;
         ss2 << "区块大小: " << GetSerializeSize(pblock, PROTOCOL_VERSION) << "字节 \n";
         ss2 << "接收时间: " << now << " 区块哈希: " << pblock->GetHash().ToString() << " \n";
-        ss2 << "交易个数: " << pblock->vtx.size() << " \n";
+        ss2 << "tx cnt: " << pblock->vtx.size() << " \n";
         ss2 << "空区块不进行预测,直接发送即可 \n";
         writeFile(to_string(h) + "_predBlk_NewBlk_Compare.log", ss2.str());
         return;
@@ -206,7 +206,7 @@ void compareBlock(const std::shared_ptr<const CBlock>& pblock, const int h)
         ss1 << msg;
         totalSize += it->GetTxSize();
     }
-    string msg = format("预测时间: %d\n交易个数: %d\n交易总量:%d\n", now.data(), vtxHash.size(), totalSize);
+    string msg = format("predict time: %s\ntx cnt: %d\ntotal tx size:%d\n", now.data(), vtxHash.size(), totalSize);
     ss1 << msg;
 
 
@@ -255,7 +255,7 @@ void compareBlock(const std::shared_ptr<const CBlock>& pblock, const int h)
         ss2 << entertime << " " << txid.ToString() << " " << index << " " << fee<<" "<< txSize << " " << txWeight << " \n";
     }
     // printf("current function: %s, line number: %d\n", __FUNCTION__, __LINE__);
-    ss2 << "区块大小(Bytes): " << GetSerializeSize(pblock, PROTOCOL_VERSION) << " 交易个数: " << pblock->vtx.size() << " \n";
+    ss2 << "区块大小(Bytes): " << GetSerializeSize(pblock, PROTOCOL_VERSION) << " tx cnt: " << pblock->vtx.size() << " \n";
     ss2 << "接收时间: " << now << " 区块哈希: " << pblock->GetHash().ToString() << " \n";
     ss2 << "预测区块命中数: " << predBlkHitCnt << " 预测序列命中数: " << predTxHitCnt << " \n";
     ss2 << "交易池命中数: " << poolHitCnt << " 本地未命中数: " << (pblock->vtx.size() - predBlkHitCnt - predTxHitCnt - poolHitCnt) << " \n";

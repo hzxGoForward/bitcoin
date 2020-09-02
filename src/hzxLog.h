@@ -33,29 +33,18 @@ static unordered_map<int, pair<uint256, double>> umap_predictBlkLastTxHash;
 /// int 对应区块高度，vector<uint256> 对应在这个高度下纳入预测序列的所有交易的哈希值，前面交易按交易费排序，后面按照时间排序
 static unordered_map<int, vector<uint256>> umap_vecPrecictTxid;
 
-static std::string format(const char* fmt, ...)
+template <typename... Args>
+static std::string format(const char* format, Args... args)
 {
-    // 定义两个va_list 类型的变量，这种变量可以用来处理变长参数：...
-    va_list args, args1;
+    int length = std::snprintf(nullptr, 0, format, args...);
+    assert(length >= 0);
 
-    // 初始化args
-    va_start(args, fmt);
+    char* buf = new char[length + 1];
+    std::snprintf(buf, length + 1, format, args...);
 
-    // args1 是 args 的一个拷贝
-    va_copy(args1, args);
-
-    // 使用nullptr和0作为前两个参数来获取格式化这个变长参数列表所需要的字符串长度
-    // 使用 string(size_t n, char c) 构造函数，构造一个长度为n的字符串，内容为n个c的拷贝
-    string res(1 + vsnprintf(nullptr, 0, fmt, args1), 0);
-    // args1 任务完成，将其关闭，清理。
-    va_end(args1);
-
-    // 使用args来格式化要返回的字符串res， 指定长度size
-    vsnprintf(&res[0], res.size(), fmt, args);
-    // args 任务完成，关闭，清理
-    va_end(args);
-
-    return res;
+    std::string str(buf);
+    delete[] buf;
+    return str;
 }
 
 
