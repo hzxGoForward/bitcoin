@@ -540,6 +540,7 @@ void BlockAssembler::addPackageTxs(int &nPackagesSelected, int &nDescendantsUpda
 // TODO START BY HZX
 void BlockAssembler::addPackageTxsWithLimit(const int ntxLimit, int& nPackagesSelected, int& nDescendantsUpdated, std::set<uint256>& skipTxHash)
 {
+    printf("current function: %s, line number: %d\n", __FUNCTION__, __LINE__);
     // mapModifiedTx will store sorted packages after they are modified
     // because some of their txs are already in the block
     indexed_modified_transaction_set mapModifiedTx;
@@ -556,12 +557,13 @@ void BlockAssembler::addPackageTxsWithLimit(const int ntxLimit, int& nPackagesSe
     // Limit the number of attempts to add transactions to the block when it is
     // close to full; this is just a simple heuristic to finish quickly if the
     // mempool has a lot of entries.
-    const int64_t MAX_CONSECUTIVE_FAILURES = 1000;
+    const int64_t MAX_CONSECUTIVE_FAILURES = 10000;
     int64_t nConsecutiveFailed = 0;
     // TODO START BY HZX
     //  记录每一笔交易加入时所在的组
     int group = 0;
     // TODO END BY HZX
+    printf("current function: %s, line number: %d\n", __FUNCTION__, __LINE__);
     while (mi != mempool.mapTx.get<ancestor_score>().end() || !mapModifiedTx.empty()) {
         // First try to find a new transaction in mapTx to evaluate.
         if (mi != mempool.mapTx.get<ancestor_score>().end() &&
@@ -573,7 +575,8 @@ void BlockAssembler::addPackageTxsWithLimit(const int ntxLimit, int& nPackagesSe
         // TODO START BY HZX
         // 如果这笔交易在skipTxHash中,则跳过
         if (mi != mempool.mapTx.get<ancestor_score>().end() && skipTxHash.count(iter->GetSharedTx()->GetHash())>0){
-            printf("%s:%d, %s has been skipped, ", __FUNCTION__, __LINE__, iter->GetSharedTx()->GetHash().ToString().data());
+            const uint256& txid = iter->GetSharedTx()->GetHash();
+            printf("%s has been skipped, ", txid.ToString().data());
             ++mi;
             continue;
         }
@@ -677,18 +680,18 @@ void BlockAssembler::addPackageTxsWithLimit(const int ntxLimit, int& nPackagesSe
             // 如果存在于skiptxHash或者failedTx中,则将该交易加入failedTx中
             const uint256& txid = (*iit)->GetSharedTx()->GetHash();
             if (skipTxHash.count(txid)) {
+                skipTxHash.insert(iter->GetSharedTx()->GetHash());
                 printf("%s: %d, %s exists in skipTxHash, %s has been skipped\n", __FUNCTION__, __LINE__, txid.ToString().data(), iter->GetSharedTx()->GetHash().ToString().data());
+                if (fUsingModified) {
+                    mapModifiedTx.get<ancestor_score>().erase(modit);
+                }
                 skip = true;
                 break;
             }
         }
         // 如果需要跳过,则设置
         if (skip) {
-            if (fUsingModified) {
-                mapModifiedTx.get<ancestor_score>().erase(modit);
-            }
             const uint256& txid = iter->GetSharedTx()->GetHash();
-            skipTxHash.insert(txid);
             printf("%s:%d, %s has been skipped and put into skipTxHash", __FUNCTION__, __LINE__, txid.ToString().data());
             continue;
         }
