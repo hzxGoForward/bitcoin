@@ -178,12 +178,13 @@ void compareBlock(const std::shared_ptr<const CBlock>& pblock, const int h)
    
     CreatePredictTxSequence(pblock, h);
     printf("predicted block for %d, ------current function: %s, line number: %d\n",h,  __FUNCTION__, __LINE__);
+    
     // 2. 基于预测序列中的交易，预测下一个区块的交易
     CScript pubKey;
     pubKey << 0 << OP_TRUE;
     BlockAssembler basm(Params());
-    // 预测区块权重为合法区块的倍，
-    basm.addBlockWeight(4000000-4000);
+    // 预测区块权重为合法区块的2倍
+    basm.addBlockWeight(4000000);
     auto blk = basm.CreateNewBlock(pubKey);
     std::vector<uint256> vtxHash;
     
@@ -192,31 +193,22 @@ void compareBlock(const std::shared_ptr<const CBlock>& pblock, const int h)
     ss1 << "进入时间 交易哈希 对应索引 交易费用 交易大小 交易权重 所属组别  费率\n";
     map<uint256, int> mapTxidIndex;
     int totalSize = 0;
+    // 从coinbase交易以后的交易开始，全部放入vtxHash中
     for (int i = 1; i < blk->block.vtx.size(); ++i) {
         const auto& txid = blk->block.vtx[i]->GetHash();
         vtxHash.push_back(txid);
-        mapTxidIndex[txid] = i;
+        mapTxidIndex[txid] = i-1;
         
         auto it = mempool.mapTx.find(txid);
         auto info = mempool.info(txid);
         const string entertime = FormatISO8601DateTime(it->GetTime());
         string msg = format("%s %s %d %lld %d %d %d %f \n", entertime.data(), txid.ToString().data(), i - 1, it->GetFee(), it->GetTxSize(), it->GetTxWeight(), blk->vTxGroup[i], blk->vTxFeeRate[i]);
         ss1 << msg;
-        //ss1 << FormatISO8601DateTime(it->GetTime())<<" ";                   // 进入交易池时间
-        //ss1 << txid.ToString() << " ";                                      // 交易哈希
-        //ss1 << i << " ";                                                    // 对应索引
-        //ss1 << it->GetFee()<<" ";                                           // 交易费用                                           
-        //ss1 << it->GetTxSize() << " ";                                      // 交易大小
-        //ss1 << it->GetTxWeight()<<" ";                                      // 交易权重
-        //ss1 << blk->vTxGroup[i] << " ";                                     // 交易组别
-        //ss1 << blk->vTxFeeRate[i] << " \n";                                 // 交易费率
         totalSize += it->GetTxSize();
     }
     string msg = format("预测时间: %d\n交易个数: %d\n交易总量:%d\n", now.data(), vtxHash.size(), totalSize);
     ss1 << msg;
-    //ss1 << "预测时间: " << now << " \n";
-    //ss1 << "交易个数: " << vtxHash.size() << " \n";
-    //ss1 << "交易总量(byte): " << totalSize << " \n";
+
 
     // 4. 遍历新收到区块中每一笔交易，记录每个交易对应的预测序列中的交易号
     ostringstream ss2, tmpSS;                                       // tmpSS 用于记录顺序颠倒的交易序列
@@ -272,7 +264,7 @@ void compareBlock(const std::shared_ptr<const CBlock>& pblock, const int h)
     
     // 5. 记录交易序列中多余的交易，并将它们放入下一个区块的预测序列中
     ss2 << "预测范围内多余交易索引：\n[";
-    for (int idx = 0; idx <= vtxHash.size(); ++idx) {
+    for (int idx = 0; idx < vtxHash.size(); ++idx) {
         if (hitHash[idx] == 0) {
             if (idx>=minNumber && idx <= maxNumber)
                 ss2 << idx << " ";
