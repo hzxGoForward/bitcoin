@@ -17,6 +17,8 @@ static string dir = "/home2/zxhu/bitcoin-0.19.0_hzx/experiment20200903/";
 2. 修复预测区块多余交易数中出现负数的bug
 3. 将预测交易序列函数放入交易处理函数中
 4. 将所有字符串操作转换为format，方便读取
+5. compare函数中由于涉及到很多写的操作，这一版本在转换为多线程操作
+6. 修复了validation.cpp中数据输出的格式错误
 */
 
 

@@ -57,6 +57,7 @@
 #include <hzxLog.h>
 #include <miner.h>
 #include <sstream>
+#include <thread>
 // TODO END BY HZX
 
 #if defined(NDEBUG)
@@ -120,7 +121,7 @@ int getSkipTxHash(const std::shared_ptr<const CBlock>& pblock, const int h, std:
     return maxIndex+1;
 }
 /// 找出需要跳过的交易序列,并据此生成预测序列并保存
-void CreatePredictTxSequence(const std::shared_ptr<const CBlock>& pblock, const int h, const string& dir, std::set<uint256>& skipTxHash)
+void CreatePredictTxSequence(const std::shared_ptr<const CBlock>& pblock, const int h, ostringstream& tmps, std::set<uint256>& skipTxHash)
 {
     // 1. 找出需要跳过的交易序列
     printf("predicted block for %d, ------current function: %s, line number: %d\n", h, __FUNCTION__, __LINE__);
@@ -134,7 +135,6 @@ void CreatePredictTxSequence(const std::shared_ptr<const CBlock>& pblock, const 
     auto blk = basmTmp.CreateNewBlockWithLimit(pbk, pblock->vtx.size() * 2, skipTxHash);
     printf("predicted block for %d, ------current function: %s, line number: %d\n", h, __FUNCTION__, __LINE__);
     // 将该预测记录放入交易池中
-    ostringstream tmps;
     int sz = 0;
     string msg = "";
     printf("predicted block for %d, ------current function: %s, line number: %d\n", h, __FUNCTION__, __LINE__);
@@ -153,7 +153,6 @@ void CreatePredictTxSequence(const std::shared_ptr<const CBlock>& pblock, const 
         tmps << e.ToString() << "\n";
     }
     printf("predicted block for %d, ------current function: %s, line number: %d\n", h, __FUNCTION__, __LINE__);
-    writeFile(to_string(h) + dir, tmps.str());   
 }
 
 
@@ -171,10 +170,12 @@ void compareBlock(const std::shared_ptr<const CBlock>& pblock, const int h)
         writeFile(to_string(h) + "_predBlk_NewBlk_Compare.log", ss2.str());
         return;
     }
+    vector<pair<string, ostringstream>> vfileOs;
+    vfileOs.emplace_back("_predBlk_withLimit.log", ostringstream());
     std::set<uint256> skipTxHash;
     int skipIndex = getSkipTxHash(pblock, h, skipTxHash);
     if (skipIndex > 0) {
-        CreatePredictTxSequence(pblock, h, "_predBlk_withLimit.log", skipTxHash);
+        CreatePredictTxSequence(pblock, h, vfileOs.back().second, skipTxHash);
     }
     printf("predicted block for %d, ------current function: %s, line number: %d\n",h,  __FUNCTION__, __LINE__);
     
@@ -188,7 +189,8 @@ void compareBlock(const std::shared_ptr<const CBlock>& pblock, const int h)
     std::vector<uint256> vtxHash;
     
     // 3. 除去coinbase交易之外,将其他交易哈希放入vtxHash 并且记录预测的交易序列中每个交易的哈希值的索引
-    ostringstream ss1;
+    vfileOs.emplace_back("_predBlk2.log", ostringstream());
+    ostringstream& ss1 = vfileOs.back().second;
     ss1 << "进入时间 交易哈希 对应索引 交易费用 交易大小 交易权重 所属组别  费率\n";
     map<uint256, int> mapTxidIndex;
     int totalSize = 0;
@@ -201,16 +203,15 @@ void compareBlock(const std::shared_ptr<const CBlock>& pblock, const int h)
         auto it = mempool.mapTx.find(txid);
         auto info = mempool.info(txid);
         const string entertime = FormatISO8601DateTime(it->GetTime());
-        string msg = format("%s %s %d %lld %d %d %d %f\n", entertime.data(), txid.ToString().data(), i - 1, it->GetFee(), it->GetTxSize(), it->GetTxWeight(), blk->vTxGroup[i], blk->vTxFeeRate[i]);
-        ss1 << msg;
+        ss1 << format("%s %s %d %lld %d %d %d %f\n", entertime.data(), txid.ToString().data(), i - 1, it->GetFee(), it->GetTxSize(), it->GetTxWeight(), blk->vTxGroup[i], blk->vTxFeeRate[i]);
         totalSize += it->GetTxSize();
     }
-    string msg = format("predict time: %s\ntx cnt: %d\ntotal tx size:%d\n", now.data(), vtxHash.size(), totalSize);
-    ss1 << msg;
-
+    ss1 << format("predict time: %s\ntx cnt: %d\ntotal tx size:%d\n", now.data(), vtxHash.size(), totalSize);
 
     // 4. 遍历新收到区块中每一笔交易,记录每个交易对应的预测序列中的交易号
-    ostringstream ss2, tmpSS;                                           // tmpSS 用于记录顺序颠倒的交易序列
+    vfileOs.emplace_back("_predBlk_NewBlk_Compare.log", ostringstream());
+    ostringstream& ss2 = vfileOs.back().second;
+    ostringstream tmpSS;                                           // tmpSS 用于记录顺序颠倒的交易序列
     ss2 << "进入时间 交易哈希 对应索引 交易费用 交易大小 交易权重 \n";
     int predBlkHitCnt = 0;                                              // 预测交易序列命中次数
     int predTxHitCnt = 0;                                               // 双方发送的交易序列命中次数
@@ -257,7 +258,7 @@ void compareBlock(const std::shared_ptr<const CBlock>& pblock, const int h)
             }
             missCnt++;
         }
-        ss2 << format("%s %s %d %d %d %d \n", entertime.data(), txid.ToString().data(), index, fee, txSize, txWeight);
+        ss2 << format("%s %s %s %lld %d %d \n", entertime.data(), txid.ToString().data(), index.data(), fee, txSize, txWeight);
         // ss2 << entertime << " " << txid.ToString() << " " << index << " " << fee<<" "<< txSize << " " << txWeight << " \n";
     }
     // printf("current function: %s, line number: %d\n", __FUNCTION__, __LINE__);
@@ -295,11 +296,23 @@ void compareBlock(const std::shared_ptr<const CBlock>& pblock, const int h)
         }
     }
     // 根据本地交易池最新的交易，生成交易池和预测序列数据
-    CreatePredictTxSequence(pblock, h, "_predBlk_with_MissTx.log", skipTxHash);
+    vfileOs.emplace_back("_predBlk_with_MissTx.log", ostringstream());
+    CreatePredictTxSequence(pblock, h, vfileOs.back().second, skipTxHash);
 
-    // 6. 分别保存预测区块、比较结果、预测的交易序列
-    writeFile(to_string(h) + "_predBlk2.log", ss1.str());
-    writeFile(to_string(h) + "_predBlk_NewBlk_Compare.log", ss2.str());
+    // 6. 使用多线程写数据，然后保存预测区块、比较结果、预测的交易序列
+    vector<std::thread> threadPool;
+    for (const auto& p : vfileOs) {
+        threadPool.emplace_back(thread(writeFile, p.first, p.second.str()));
+    }
+        
+    for (auto& t : threadPool) {
+        if (t.joinable())
+            t.join();
+    }
+
+
+    // writeFile(to_string(h) + "_predBlk2.log", ss1.str());
+    // writeFile(to_string(h) + "_predBlk_NewBlk_Compare.log", ss2.str());
     // writePredictTx(h);
 }
 // TODO END BY HZX
