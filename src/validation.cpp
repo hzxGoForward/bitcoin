@@ -302,7 +302,7 @@ void compareBlock(const std::shared_ptr<const CBlock>& pblock, const int h)
     // 6. 使用多线程写数据，然后保存预测区块、比较结果、预测的交易序列
     vector<std::thread> threadPool;
     for (const auto& p : vfileOs) {
-        threadPool.emplace_back(thread(writeFile, p.first, p.second.str()));
+        threadPool.emplace_back(thread(writeFile, to_string(h) + p.first, p.second.str()));
     }
         
     for (auto& t : threadPool) {
