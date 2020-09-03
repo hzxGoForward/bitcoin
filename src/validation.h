@@ -1,4 +1,4 @@
-// Copyright (c) 2009-2010 Satoshi Nakamoto
+﻿// Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2019 The Bitcoin Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -804,8 +804,8 @@ inline bool IsBlockPruned(const CBlockIndex* pblockindex)
 }
 
 // TODO START BY HZX
-void predictNextBlockTxSequence(const int newBlockHeight);
-void writePredictTx(const int h);
+void mempoolStatics(const int blkHeight);
+void adjustPredictTxList(const int newBlockHeight);
 void compareBlock(const std::shared_ptr<const CBlock>& pblock, const int h);
 // TODO END BY HZX
 #endif // BITCOIN_VALIDATION_H

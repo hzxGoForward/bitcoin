@@ -1,5 +1,5 @@
 #include <fstream>
-#include <iostream>
+#include <cstdio>
 #include <map>
 #include <set>
 #include <string>
@@ -11,16 +11,12 @@
 using namespace std;
 static int64_t writeDiff = 120; // 120秒写一次
 static int64_t lastMempoolRecordTime = 0;
-static string dir = "/home2/zxhu/bitcoin-0.19.0_hzx/experiment20200902/";
+static string dir = "/home2/zxhu/bitcoin-0.19.0_hzx/experiment20200903/";
 /*
-1. 这一版本中，预测新交易时，取消了区块验证过程
-2. 在收到新的区块后，增加一个新功能，指定预测交易序列数，并且可以排除某些交易
-3. 每次预测后，检查生成的交易是否在预测序列中，如果在其中才算成功。
-4. 每次预测一批交易的时候，记录这批交易加入区块时隶属的组合费率
-5. 文件保存位置为experiment20200903
-6. 修改umap_setPredictTxid中的value形式为map<uint256,int>的类型，其中int指示该元素的索引
-7. umap_predictBlkLastTxHash变量暂时不再使用
-8. 增加一个字符串format函数，方便输出和文件处理
+1. 这个版本这种，收到交易后，尝试将本地不存在的交易放入交易池和预测序列中，再生成预测序列，然后查看此时生成的交易序列的准确性
+2. 修复预测区块多余交易数中出现负数的bug
+3. 将预测交易序列函数放入交易处理函数中
+4. 将所有字符串操作转换为format，方便读取
 */
 
 
@@ -59,9 +55,9 @@ static void writeFile(const string& filename, const string& msg)
         ofs.write(msg.data(), msg.size());
         ofs.close();
     } else {
-        cout << "打开文件失败, 文件名： " << filepath << endl;
+        printf("打开文件失败, 文件名：%s \n", filepath.data());
     }
-    cout << "成功写入..." << filepath << endl;
+    printf("成功写入...%s \n", filepath.data());
 }
 
 // hzx 压缩区块验证情况

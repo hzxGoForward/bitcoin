@@ -397,8 +397,7 @@ struct CNodeState {
 };
 
 // TODO START BY HZX
-
-static void cmpctBlkStatics(const CNode* pfrom, const CBlockIndex* pindex, const CBlockHeaderAndShortTxIDs& cmpctblock, const PartiallyDownloadedBlock& partialBlock, const string& state)
+void cmpctBlkStatics(const CNode* pfrom, const CBlockIndex* pindex, const CBlockHeaderAndShortTxIDs& cmpctblock, const PartiallyDownloadedBlock& partialBlock, const string& state)
 {
     // 对方发送一个压缩区块，记录之
     string ip = pfrom->addr.ToString(); // 对方ip地址
@@ -2668,6 +2667,17 @@ bool static ProcessMessage(CNode* pfrom, const std::string& strCommand, CDataStr
             }
             MaybePunishNode(pfrom->GetId(), state, /*via_compact_block*/ false);
         }
+
+            // TODO START BY HZX
+        {
+            // 统计当前交易池中交易数
+            int height = ::ChainActive().Tip()->nHeight;
+            mempoolStatics(height);
+            adjustPredictTxList(height + 1);
+        }
+        // TODO END BY HZX
+
+
         return true;
     }
 
