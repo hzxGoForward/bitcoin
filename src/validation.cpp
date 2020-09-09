@@ -96,63 +96,119 @@ void adjustPredictTxList(const int newBlockHeight)
 }
 
 /// 根据已有的预测交易序列,对比新区块中的交易序列,找出需要跳过的交易集合,从maxIndex+1后续的预测序列不能纳入预测序列
-int getSkipTxHash(const std::shared_ptr<const CBlock>& pblock, const int h, std::set<uint256>& skipTxHash) {
-    int maxIndex = -1;
+int getPredTxSet(const std::shared_ptr<const CBlock>& pblock, const int h, std::set<uint256>& predTxidSet)
+{
+    int mi = -1;
     if (umap_setPredictTxid.count(h) == 0) {
-        printf("can not create skipTxHash for block %d, current function: %s, line number: %d\n ",h,  __FUNCTION__, __LINE__);
-        return maxIndex;
+        printf("can not create predTxidSet for block %d, current function: %s, line number: %d\n ", h, __FUNCTION__, __LINE__);
+        return mi;
     }
+    printf("predicted block for %d, ------current function: %s, line number: %d\n", h, __FUNCTION__, __LINE__);
     // 找出pblock中交易对应的最大的索引
-    for (size_t i = 0; i < pblock->vtx.size(); ++i) {
+    for (size_t i = 1; i < pblock->vtx.size(); ++i) {
         const auto& txid = pblock->vtx[i]->GetHash();
         if (umap_setPredictTxid[h].count(txid)) {
-            maxIndex = max(maxIndex, umap_setPredictTxid[h][txid]);
+            mi = max(mi, umap_setPredictTxid[h][txid]);
         }
     }
+    if (mi == -1)
+        mi = umap_vecPrecictTxid[h].size();
     printf("predicted block for %d, ------current function: %s, line number: %d\n", h, __FUNCTION__, __LINE__);
-    // 如果新区快中的交易哈希值,没有一个存在于预测序列中,则令其为最后一个索引
-    if (maxIndex == -1)
-        maxIndex = umap_setPredictTxid[h].size()-1;
+    // 将maxIndex以前的哈希值放入txidSet中,这里加法不会溢出
+    for (int i = 0; i <=mi; ++i)
+        predTxidSet.insert(umap_vecPrecictTxid[h][i]);
     printf("predicted block for %d, ------current function: %s, line number: %d\n", h, __FUNCTION__, __LINE__);
-    // 将maxIndex以后的所有哈希值放入skipTxHash中,这里加法不会溢出
-    for (int i = maxIndex + 1; i < umap_vecPrecictTxid[h].size(); ++i)
-        skipTxHash.insert(umap_vecPrecictTxid[h][i]);
-    printf("predicted block for %d, ------current function: %s, line number: %d\n", h, __FUNCTION__, __LINE__);
-    return maxIndex+1;
+    return mi;
 }
-/// 找出需要跳过的交易序列,并据此生成预测序列并保存
-void CreatePredictTxSequence(const std::shared_ptr<const CBlock>& pblock, const int h, ostringstream& tmps, std::set<uint256>& skipTxHash)
+
+/// <summary>
+/// 遍历新区块中的交易，如果本地不存在该交易，则放入交易池.
+/// 将本地不存在的交易放入mapMissTxid中，另外将新区块中除了coinbase交易以外的所有交易放入 mapBlkTxidIndex
+void acceptMissTxToMemPool(const std::shared_ptr<const CBlock>& pblock, ostringstream& os, std::map<uint256,int>& mapPredTxIndex, std::set<uint256>& predTxidSet, map<uint256,int>& mapMissTxid, map<uint256,int>& mapBlkTxidIndex) {
+    os << "entertime txid fee txSz txWeight position\n";
+    // 写入coinbase交易信息
+    const auto now = FormatISO8601DateTime(GetTime());
+    const uint256& cbTxid = pblock->vtx[0]->GetHash();
+    const CAmount cbFee = 0;
+    const size_t cbTxSz = pblock->vtx[0]->GetTotalSize();
+    os << format("%s %s %lld %d %d %s\n", now.data(), cbTxid.ToString().data(), cbFee, cbTxSz, 0, string("None").data());
+    mapMissTxid[pblock->vtx[0]->GetHash()] = 0;
+    const int predSz = predTxidSet.size();                              // 参与预测序列的交易数量
+    // 遍历pblock中每一笔交易，并将信息存入os中
+    for (size_t i = 1; i < pblock->vtx.size(); ++i) {
+        string entertime = now, pos = "Seq";
+        const uint256& txid = pblock->vtx[i]->GetHash();
+        CAmount fee = 0;
+        size_t txSz = 0, txWeight = 0;
+        // 如果不存在于预测序列中，则放入miss交易序列
+        if (mapPredTxIndex.count(txid) == 0) {
+            // 标记为None，并且插入预测序列，将交易哈希值对应索引放入mapMissTxid中
+            pos = "None";
+            predTxidSet.insert(txid);
+            mapMissTxid[txid] = i;
+            
+            // 如果交易存在于本地交易池中
+            if (mempool.exists(txid)) {
+                pos = "Pool";
+            
+            // 如果交易不存在于本地交易池，则放入交易池中
+            } else {
+                CValidationState state;
+                bool fMissingInputs = false;
+                std::list<CTransactionRef> lRemovedTxn;
+                AcceptToMemoryPool(mempool, state, pblock->vtx[i], &fMissingInputs, &lRemovedTxn, false /* bypass_limits */, 0 /* nAbsurdFee */);
+                mempool.check(&::ChainstateActive().CoinsTip());
+            }
+        }
+        auto it = mempool.mapTx.find(txid);
+        if(it!=mempool.mapTx.end()){
+            entertime = FormatISO8601DateTime(it->GetTime());
+            fee = it->GetFee();
+            txSz = it->GetTxSize();
+            txWeight = it->GetTxWeight();
+        }
+        os << format("%s %s %lld %d %d %s\n", entertime.data(), txid.ToString().data(), fee, txSz, txWeight, pos.data());
+        // 存储交易对应的索引
+        mapBlkTxidIndex[txid] = i;              
+    }
+    os << format("block_size(Bytes): %d\ntx_cnt: %d\n", GetSerializeSize(pblock, PROTOCOL_VERSION), pblock->vtx.size());
+    os << format("recv_time: %s\nblock_hash: %s\n", now.data(), pblock->GetHash().ToString().data());
+    os << format("mempool_tx_cnt: %d\npred_txSeq_sz: %d\nmiss_tx_cnt: %d\n", mempool.size(), predSz, mapMissTxid.size());
+}
+
+/// <summary>
+/// 根据predTxidSet中的交易，以及新区快中的所有交易，生成预测交易序列,并且将除了coinbase交易以外的所有信息写入tmps中
+/// </summary>
+/// <param name="tmps">存放预测序列信息的stream</param>
+/// <param name="predTxidSet">预测交易集合</param>
+/// <param name="mapBlkTxidIndex">新区块的交易集合</param>
+/// <param name="mapPredTxidIndex">预测交易哈希值到其索引的map映射</param>
+/// <returns></returns>
+std::unique_ptr<CBlockTemplate> createPredBlock(ostringstream& tmps, std::set<uint256>& predTxidSet, map<uint256, int>& mapBlkTxidIndex, map<uint256, int> mapPredTxidIndex)
 {
-    // 1. 找出需要跳过的交易序列
-    printf("predicted block for %d, ------current function: %s, line number: %d\n", h, __FUNCTION__, __LINE__);
+    tmps << "entertime txid fee txSz txWeight index group feeRate\n";
     auto now = FormatISO8601DateTime(GetTime());
     CScript pbk;
     pbk << 0 << OP_TRUE;
     BlockAssembler basmTmp(Params());
-    // 预测区块权重为合法区块的倍,
-    basmTmp.addBlockWeight(80000000);
-    printf("predicted block for %d, ------current function: %s, line number: %d\n", h, __FUNCTION__, __LINE__);
-    auto blk = basmTmp.CreateNewBlockWithLimit(pbk, pblock->vtx.size() * 2, skipTxHash);
-    printf("predicted block for %d, ------current function: %s, line number: %d\n", h, __FUNCTION__, __LINE__);
-    // 将该预测记录放入交易池中
-    int sz = 0;
+    basmTmp.addBlockWeight(400000000);
+    printf("------current function: %s, line number: %d\n", __FUNCTION__, __LINE__);
+    auto blk = basmTmp.CreateNewBlockWithPredTxSet(pbk, predTxidSet, mapBlkTxidIndex);
+    
+    // 3. 将每一笔预测序列交易的信息，放入写入tmps中
     string msg = "";
-    printf("predicted block for %d, ------current function: %s, line number: %d\n", h, __FUNCTION__, __LINE__);
+    printf("------current function: %s, line number: %d\n", __FUNCTION__, __LINE__);
     for (int i = 1; i < blk->block.vtx.size(); ++i) {
         const auto& txid = blk->block.vtx[i]->GetHash();
         auto it = mempool.mapTx.find(txid);
-        auto info = mempool.info(txid);
         const string entertime = FormatISO8601DateTime(it->GetTime());
-        msg = format("%s %s %d %lld %d %d %d %f\n", entertime.data(), txid.ToString().data(), i-1, it->GetFee(), it->GetTxSize(), it->GetTxWeight(), blk->vTxGroup[i], blk->vTxFeeRate[i]);
-        tmps << msg;
-        sz += it->GetTxSize();
+        tmps << format("%s %s %lld %d %d %d %d %f\n", entertime.data(), txid.ToString().data(), it->GetFee(), it->GetTxSize(), it->GetTxWeight(), i - 1, blk->vTxGroup[i], blk->vTxFeeRate[i]);
+        // 基于预测交易序列的哈希值
+        mapPredTxidIndex[txid] = i;
     }
-    msg = format("predict time: %s\ntx cnt: %d\ntotal tx size:%d \n", now.data(), blk->block.vtx.size(), sz);
-    tmps << msg << "skipped hash:\n";
-    for (auto& e : skipTxHash) {
-        tmps << e.ToString() << "\n";
-    }
-    printf("predicted block for %d, ------current function: %s, line number: %d\n", h, __FUNCTION__, __LINE__);
+ 
+    printf("------current function: %s, line number: %d\n", __FUNCTION__, __LINE__);
+    return std::move(blk);
 }
 
 
@@ -163,157 +219,33 @@ void compareBlock(const std::shared_ptr<const CBlock>& pblock, const int h)
     // 0. 检查是否为空区块,如果是空区块,加入当前信息,然后退出
     if (pblock->vtx.size() == 1) {
         ostringstream ss2;
-        ss2 << "区块大小: " << GetSerializeSize(pblock, PROTOCOL_VERSION) << "字节 \n";
-        ss2 << "接收时间: " << now << " 区块哈希: " << pblock->GetHash().ToString() << " \n";
-        ss2 << "tx cnt: " << pblock->vtx.size() << " \n";
-        ss2 << "空区块不进行预测,直接发送即可 \n";
-        writeFile(to_string(h) + "_predBlk_NewBlk_Compare.log", ss2.str());
+        size_t sz = GetSerializeSize(pblock, PROTOCOL_VERSION);
+        const string strTxid = pblock->GetHash().ToString();
+        ss2 << format("block_sz(bytes): %d recv_time: %s\nblock_hash: %s tx_cnt: %d\n", sz, now.data(), strTxid.data(), pblock->vtx.size());
+        writeFile(to_string(h) + "_new_block.log", ss2.str());
         return;
     }
-    vector<pair<string, ostringstream>> vfileOs;
-    vfileOs.emplace_back("_predBlk_withLimit.log", ostringstream());
-    std::set<uint256> skipTxHash;
-    int skipIndex = getSkipTxHash(pblock, h, skipTxHash);
-    if (skipIndex > 0) {
-        CreatePredictTxSequence(pblock, h, vfileOs.back().second, skipTxHash);
-    }
-    printf("predicted block for %d, ------current function: %s, line number: %d\n",h,  __FUNCTION__, __LINE__);
     
-    // 2. 基于预测序列中的交易,预测下一个区块的交易
-    CScript pubKey;
-    pubKey << 0 << OP_TRUE;
-    BlockAssembler basm(Params());
-    // 预测区块权重为合法区块的2倍
-    basm.addBlockWeight(4000000);
-    auto blk = basm.CreateNewBlock(pubKey);
-    std::vector<uint256> vtxHash;
+    // 1. 求出预测序列中的索引mi，将[0,mi]范围内的预测交易序列放入predTxidSet中
+    std::set<uint256> predTxidSet;
+    int lastIndex = getPredTxSet(pblock, h, predTxidSet);
     
-    // 3. 除去coinbase交易之外,将其他交易哈希放入vtxHash 并且记录预测的交易序列中每个交易的哈希值的索引
-    vfileOs.emplace_back("_predBlk2.log", ostringstream());
-    ostringstream& ss1 = vfileOs.back().second;
-    ss1 << "进入时间 交易哈希 对应索引 交易费用 交易大小 交易权重 所属组别  费率\n";
-    map<uint256, int> mapTxidIndex;
-    int totalSize = 0;
-    // 从coinbase交易以后的交易开始,全部放入vtxHash中
-    for (int i = 1; i < blk->block.vtx.size(); ++i) {
-        const auto& txid = blk->block.vtx[i]->GetHash();
-        vtxHash.push_back(txid);
-        mapTxidIndex[txid] = i-1;
-        
-        auto it = mempool.mapTx.find(txid);
-        auto info = mempool.info(txid);
-        const string entertime = FormatISO8601DateTime(it->GetTime());
-        ss1 << format("%s %s %d %lld %d %d %d %f\n", entertime.data(), txid.ToString().data(), i - 1, it->GetFee(), it->GetTxSize(), it->GetTxWeight(), blk->vTxGroup[i], blk->vTxFeeRate[i]);
-        totalSize += it->GetTxSize();
-    }
-    ss1 << format("predict time: %s\ntx cnt: %d\ntotal tx size:%d\n", now.data(), vtxHash.size(), totalSize);
+    // 2. 求出预测序列中缺失的交易,将其放入mapMissTxid中，并放入交易池中
+    map<uint256, int> mapMissTxid;                                          // mapMissTxid 存储缺失交易及其索引
+    map<uint256,int> mapBlkTxidIndex;                                       // mapBlkTxidIndex 记录每一笔新区块中交易的哈希值以及对应的索引
+    ostringstream blkOs;
+    acceptMissTxToMemPool(pblock, blkOs,umap_setPredictTxid[h], predTxidSet, mapMissTxid, mapBlkTxidIndex);
 
-    // 4. 遍历新收到区块中每一笔交易,记录每个交易对应的预测序列中的交易号
-    vfileOs.emplace_back("_predBlk_NewBlk_Compare.log", ostringstream());
-    ostringstream& ss2 = vfileOs.back().second;
-    ostringstream tmpSS;                                           // tmpSS 用于记录顺序颠倒的交易序列
-    ss2 << "进入时间 交易哈希 对应索引 交易费用 交易大小 交易权重 \n";
-    int predBlkHitCnt = 0;                                              // 预测交易序列命中次数
-    int predTxHitCnt = 0;                                               // 双方发送的交易序列命中次数
-    int poolHitCnt = 0, missCnt = 0;                                    // 交易池命中数, 本地未命中数
-    int lastNumber = -1;                                                // pblock上一笔被命中交易的索引
-    int minNumber = std::numeric_limits<int>::max(), maxNumber = -1;    // pblock被命中交易索引的最大值和最小值
-    vector<CTransactionRef> vmissTx;                                    // 存储本地缺失的交易
-    vector<int> hitHash(vtxHash.size(), 0);                             // 表示交易是否被命中,0未命中,1表示命中
-    for (size_t i = 0; i < pblock->vtx.size(); ++i) {
-        const CTransactionRef& tx = pblock->vtx[i];
-        const auto& txid = tx->GetHash();                               // 交易哈希
-        string entertime = now, index = "None";                         // 进入交易池时间, 对应预测区块的序号
-        size_t txSize = 0, txWeight = 0;                                // 交易大小, 交易权重
-        CAmount fee = -1;                                               // 交易费
-        if (mempool.exists(txid)) {                                     // 如果交易存在于本地
-            auto it = mempool.mapTx.find(txid);
-            entertime = FormatISO8601DateTime(it->GetTime());
-            txSize = it->GetTxSize();
-            txWeight = it->GetTxWeight();
-            fee = it->GetFee();
-            if (mapTxidIndex.count(txid) && umap_setPredictTxid[h].count(txid)) { // 如果存在于生成的交易序列中
-                predBlkHitCnt++;
-                int tmpIndex = mapTxidIndex[txid];
-                hitHash[tmpIndex] = 1;
-                minNumber = min(minNumber, tmpIndex);
-                maxNumber = max(minNumber, tmpIndex);
-                if (lastNumber > tmpIndex) {
-                    tmpSS << lastNumber << " " << tmpIndex<<" \n";
-                }
-                index = to_string(tmpIndex);
-                lastNumber = tmpIndex;
-            } else if (umap_setPredictTxid[h].count(txid)) {        // 如果存在向对方发送过得交易序列中
-                index = "Seq";
-                predTxHitCnt++;
-            } else {                                                // 如果存在于预测序列中而未纳入预测序列
-                index = "Pool";
-                poolHitCnt++;
-            }
-        } else {                                                    // 如果本地没有这笔交易
-            index = "None";
-            if (i > 0) {
-                CMutableTransaction tx(*pblock->vtx[i]);
-                vmissTx.push_back(MakeTransactionRef(std::move(tx)));
-            }
-            missCnt++;
-        }
-        ss2 << format("%s %s %s %lld %d %d \n", entertime.data(), txid.ToString().data(), index.data(), fee, txSize, txWeight);
-        // ss2 << entertime << " " << txid.ToString() << " " << index << " " << fee<<" "<< txSize << " " << txWeight << " \n";
-    }
-    // printf("current function: %s, line number: %d\n", __FUNCTION__, __LINE__);
-    ss2 << format("block_size(Bytes): %d tx_cnt: %d \n", GetSerializeSize(pblock, PROTOCOL_VERSION), pblock->vtx.size());
-    ss2 << format("recv_time: %s block_hash: %s \n", now.data(), pblock->GetHash().ToString().data());
-    ss2 << format("predict_blk_hit_cnt: %d predict_tx_seq_hit_cnt: %d \n", predBlkHitCnt, predTxHitCnt);
-    ss2 << format("mempool_hit_cnt: %d local_miss_tx_cnt: %d \n", poolHitCnt, missCnt);
-    ss2 << format("predict_range: [%d, %d] dummy_index_cnt: %d \n", minNumber, maxNumber, maxNumber - minNumber + 1 - predBlkHitCnt);
-    ss2 << format("mempool_tx_cnt: %d tx_in_seq_cnt: %d\n", mempool.size(), umap_vecPrecictTxid[h].size());
-    
-    // 5. 记录交易序列中多余的交易,并将它们放入下一个区块的预测序列中
-    ss2 << "预测范围内多余交易索引：\n[";
-    for (int idx = 0; idx < hitHash.size(); ++idx) {
-        if (hitHash[idx] == 0) {
-            if (idx>=minNumber && idx <= maxNumber)
-                ss2 << idx << " ";
-        }
-    }
-    ss2 << "] \n";
-    ss2 << "次序颠倒的交易序列: \n" << tmpSS.str();
-    printf("current function: %s, line number: %d\n", __FUNCTION__, __LINE__);
+    // 3. 利用predTxidSet生成预测序列
+    ostringstream predOs;
+    map<uint256, int> mapPredTxidIndex;
+    auto predBlk = createPredBlock(predOs, predTxidSet, mapBlkTxidIndex, mapPredTxidIndex);
 
-
-    // 将所有本地缺失的交易(除去coinbasee交易以外)，放入交易池和预测序列中
-    for (auto& ptx : vmissTx) {
-        CValidationState state;
-        bool fMissingInputs = false;
-        std::list<CTransactionRef> lRemovedTxn;
-        AcceptToMemoryPool(mempool, state, ptx, &fMissingInputs, &lRemovedTxn, false /* bypass_limits */, 0 /* nAbsurdFee */);
-        mempool.check(&::ChainstateActive().CoinsTip());
-        const uint256& txhash = ptx->GetHash();
-        if (umap_setPredictTxid[h].count(txhash) == 0) {
-            umap_setPredictTxid[h][txhash] = umap_vecPrecictTxid[h].size();
-            umap_vecPrecictTxid[h].push_back(txhash);
-        }
-    }
-    // 根据本地交易池最新的交易，生成交易池和预测序列数据
-    vfileOs.emplace_back("_predBlk_with_MissTx.log", ostringstream());
-    CreatePredictTxSequence(pblock, h, vfileOs.back().second, skipTxHash);
-
-    // 6. 使用多线程写数据，然后保存预测区块、比较结果、预测的交易序列
-    vector<std::thread> threadPool;
-    for (const auto& p : vfileOs) {
-        threadPool.emplace_back(thread(writeFile, to_string(h) + p.first, p.second.str()));
-    }
-        
-    for (auto& t : threadPool) {
-        if (t.joinable())
-            t.join();
-    }
-
-
-    // writeFile(to_string(h) + "_predBlk2.log", ss1.str());
-    // writeFile(to_string(h) + "_predBlk_NewBlk_Compare.log", ss2.str());
-    // writePredictTx(h);
+    // 使用多线程写数据，然后保存预测区块、比较结果、预测的交易序列
+    thread th1(writeFile, to_string(h) +"_new_block.log", blkOs.str());
+    thread th2(writeFile, to_string(h) + "_pred_block.log", predOs.str());
+    th1.join();
+    th2.join();
 }
 // TODO END BY HZX
 

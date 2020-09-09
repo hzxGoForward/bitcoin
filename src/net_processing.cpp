@@ -2674,9 +2674,14 @@ bool static ProcessMessage(CNode* pfrom, const std::string& strCommand, CDataStr
             int height = ::ChainActive().Tip()->nHeight;
             mempoolStatics(height);
             adjustPredictTxList(height + 1);
+            // 如果当前交易没有纳入预测序列，则将其纳入预测序列中
+            const auto& cur_txid = tx.GetHash();
+            if (umap_setPredictTxid[height + 1].count(cur_txid) == 0) {
+                umap_setPredictTxid[height + 1].emplace(std::make_pair(cur_txid, umap_setPredictTxid[height + 1].size()));
+                umap_vecPrecictTxid[height + 1].emplace_back(cur_txid);
+            }
         }
         // TODO END BY HZX
-
 
         return true;
     }

@@ -11,7 +11,7 @@
 using namespace std;
 static int64_t writeDiff = 120; // 120秒写一次
 static int64_t lastMempoolRecordTime = 0;
-static string dir = "/home2/zxhu/bitcoin-0.19.0_hzx/experiment20200903/";
+static string dir = "/home2/zxhu/bitcoin-0.19.0_hzx/experiment20200908/";
 /*
 1. 这个版本这种，收到交易后，尝试将本地不存在的交易放入交易池和预测序列中，再生成预测序列，然后查看此时生成的交易序列的准确性
 2. 修复预测区块多余交易数中出现负数的bug
@@ -19,6 +19,9 @@ static string dir = "/home2/zxhu/bitcoin-0.19.0_hzx/experiment20200903/";
 4. 将所有字符串操作转换为format，方便读取
 5. compare函数中由于涉及到很多写的操作，这一版本在转换为多线程操作
 6. 修复了validation.cpp中数据输出的格式错误
+7. 新建路径9月8号√
+8. 每次调整发送交易序列时，生成交易预测序列，并且与当前交易一起发送，√
+9. 用已有的交易预测序列+缺失的交易预测-不应该出现的交易 预测区块中的交易。
 */
 
 
