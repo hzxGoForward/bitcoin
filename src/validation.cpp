@@ -58,6 +58,7 @@
 #include <miner.h>
 #include <sstream>
 #include <thread>
+#include <blockencodings.h>
 // TODO END BY HZX
 
 #if defined(NDEBUG)
@@ -171,9 +172,12 @@ void acceptMissTxToMemPool(const std::shared_ptr<const CBlock>& pblock, ostrings
         // 存储交易对应的索引
         mapBlkTxidIndex[txid] = i;              
     }
+    CBlockHeaderAndShortTxIDs cmpctBlock(*pblock,true);
+    os << format("cmpct_block_sz(Bytes): %d\n", GetSerializeSize(cmpctBlock, PROTOCOL_VERSION));
     os << format("block_size(Bytes): %d\ntx_cnt: %d\n", GetSerializeSize(pblock, PROTOCOL_VERSION), pblock->vtx.size());
     os << format("recv_time: %s\nblock_hash: %s\n", now.data(), pblock->GetHash().ToString().data());
     os << format("mempool_tx_cnt: %d\npred_txSeq_sz: %d\nmiss_tx_cnt: %d\n", mempool.size(), predSz, mapMissTxid.size());
+
 }
 
 /// <summary>
