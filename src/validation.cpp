@@ -4034,9 +4034,9 @@ bool CChainState::AcceptBlock(const std::shared_ptr<const CBlock>& pblock, CVali
             auto blkHeight = pindex->nHeight;
             auto mempooltxCnt = mempool.size();
             std::string time = FormatISO8601DateTime(GetTime());
-            std::string msg = time + "  " + blkhash.ToString() + "  " +
-                              std::to_string(blkHeight) + "  " + std::to_string(mempooltxCnt) + "  " + std::to_string(existCnt) + "  " +
-                              std::to_string(noExistCnt) + "  " + std::to_string(curtipHeight) + "\n\n";
+            std::string msg = time + " " + blkhash.ToString() + " " +
+                              std::to_string(blkHeight) + " " + std::to_string(mempooltxCnt) + " " + std::to_string(existCnt) + " " +
+                              std::to_string(noExistCnt) + " " + std::to_string(curtipHeight) + "\n";
             // printf("收到新区快:%s", msg.data());
             writeNormalRecv(msg, "normalBlock/"+time.substr(0, 10) + "_normalBlockRecv.log");
             printf("detect whether predict %d block \n", blkHeight);
