@@ -96,6 +96,27 @@ void adjustPredictTxList(const int newBlockHeight)
     umap_predictBlkLastTxHash[newBlockHeight] = {ptemplate->block.vtx.back()->GetHash(), blockAssembler.lastTxFeeRate};
 }
 
+/// 根据接收的交易序列,重新构建一个区块,然后将可能发送的交易发送给邻居节点
+void adjustPredictTxList(std::map<uint256,int>& txidSet, std::vector<uint256>& vtxid, std::pair<uint256,double>& p, const int m)
+{
+    // 创建一个新的区块
+    CScript pubKey;
+    pubKey << 0 << OP_TRUE;
+    BlockAssembler blockAssembler(Params());
+    // 增加特定权重
+    blockAssembler.addBlockWeight(m * MAX_BLOCK_WEIGHT);
+    auto ptemplate = blockAssembler.CreateNewBlock(pubKey);
+    for (size_t i = 1; i < ptemplate->block.vtx.size(); ++i) {
+        const auto& txid = ptemplate->block.vtx[i]->GetHash();
+        if (txidSet.count(txid) == 0) {
+            txidSet.emplace(std::make_pair(txid, txidSet.size()));
+            vtxid.emplace_back(txid);
+        }
+    }
+    p = {ptemplate->block.vtx.back()->GetHash(), blockAssembler.lastTxFeeRate};
+}
+
+
 /// 根据已有的预测交易序列,对比新区块中的交易序列,找出需要跳过的交易集合,从maxIndex+1后续的预测序列不能纳入预测序列
 int getPredTxSet(const std::shared_ptr<const CBlock>& pblock, const int h, std::set<uint256>& predTxidSet)
 {
@@ -190,18 +211,16 @@ void acceptMissTxToMemPool(const std::shared_ptr<const CBlock>& pblock, ostrings
 /// <returns></returns>
 std::unique_ptr<CBlockTemplate> createPredBlock(ostringstream& tmps, std::set<uint256>& predTxidSet, map<uint256, int>& mapBlkTxidIndex, map<uint256, int> mapPredTxidIndex)
 {
-    tmps << "entertime txid fee txSz txWeight index group feeRate\n";
     auto now = FormatISO8601DateTime(GetTime());
     CScript pbk;
     pbk << 0 << OP_TRUE;
     BlockAssembler basmTmp(Params());
-    basmTmp.addBlockWeight(400000000);
-    printf("------current function: %s, line number: %d\n", __FUNCTION__, __LINE__);
+    // 提前增加很大的权重,保证所有的交易被包含进去
+    basmTmp.addBlockWeight(100*MAX_BLOCK_WEIGHT);
     auto blk = basmTmp.CreateNewBlockWithPredTxSet(pbk, predTxidSet, mapBlkTxidIndex);
     
     // 3. 将每一笔预测序列交易的信息，放入写入tmps中
-    string msg = "";
-    printf("------current function: %s, line number: %d\n", __FUNCTION__, __LINE__);
+    tmps << "entertime txid fee txSz txWeight index group feeRate\n";
     for (int i = 1; i < blk->block.vtx.size(); ++i) {
         const auto& txid = blk->block.vtx[i]->GetHash();
         auto it = mempool.mapTx.find(txid);
@@ -210,9 +229,94 @@ std::unique_ptr<CBlockTemplate> createPredBlock(ostringstream& tmps, std::set<ui
         // 基于预测交易序列的哈希值
         mapPredTxidIndex[txid] = i;
     }
- 
-    printf("------current function: %s, line number: %d\n", __FUNCTION__, __LINE__);
     return std::move(blk);
+}
+/// <summary>
+/// 将生成的区块写入文件
+/// </summary>
+/// <param name="file_name">文件名</param>
+/// <param name="blk">指向区块的指针</param>
+/// <param name="predSz">参与区块预测的交易数量</param>
+/// <param name="predBlock">是否是预测区块</param>
+/// <param name="moreRecv">如果是预测区块时，比挖矿的区块超前收到多少交易？</param>
+void writeBlockMsg(const string& file_name, const std::unique_ptr<CBlockTemplate> blk, int predSz, bool predBlock=false, int moreRecv = 0)
+{
+    ostringstream tmps;
+    int i = 0;
+    if (predBlock) {
+        tmps << "entertime txid fee txSz txWeight index group feeRate\n";
+        i++;
+    }
+    else
+        tmps << "entertime txid fee txSz txWeight position\n";
+    const auto now = FormatISO8601DateTime(GetTime());
+    for (i; i < blk->block.vtx.size(); ++i) {
+        CAmount fee = 0;
+        size_t txSz = 0, txWeight = 0;
+        string entertime = now, pos = "None";
+        const auto& txid = blk->block.vtx[i]->GetHash();
+        auto it = mempool.mapTx.find(txid);
+        if (it != mempool.mapTx.end()) {
+            entertime = FormatISO8601DateTime(it->GetTime());
+            fee = it->GetFee();
+            txSz = it->GetTxSize();
+            txWeight = it->GetTxWeight();
+            pos = "Seq";
+        }
+        if (predBlock)
+            tmps << format("%s %s %lld %d %d %d %d %f\n", entertime.data(), txid.ToString().data(), fee, txSz, txWeight, i - 1, blk->vTxGroup[i], blk->vTxFeeRate[i]);
+        else  
+            tmps << format("%s %s %lld %d %d %s\n", entertime.data(), txid.ToString().data(), fee, txSz, txWeight, pos.data());      
+    }
+    CBlockHeaderAndShortTxIDs cmpctBlock(blk->block, true);
+    tmps << format("cmpct_block_sz(Bytes): %d\n", GetSerializeSize(cmpctBlock, PROTOCOL_VERSION));
+    tmps << format("block_size(Bytes): %d\ntx_cnt: %d\n", GetSerializeSize(blk->block, PROTOCOL_VERSION), blk->block.vtx.size());
+    tmps << format("recv_time: %s\nblock_hash: %s\n", now.data(), blk->block.GetHash().ToString().data());
+    tmps << format("mempool_tx_cnt: %d\npred_txSeq_sz: %d\nmiss_tx_cnt: %d\n", mempool.size(), predSz, 1);
+    if (predBlock)
+        tmps << "mined_block\n";
+    else
+        tmps << "dummy_recv_cnt: " << moreRecv<<"\n";  // 记录在δt内多收到的交易数
+    writeFile(file_name, tmps.str());
+}
+
+
+/// <summary>
+/// 这是一个模拟器，先生成矿工固定大小为multi_block MB的区块，然后再生成矿工的预测序列
+/// </summary>
+/// <param name="h">当前区块高度</param>
+/// <param name="lastSeq">上一次接收交易的索引</param>
+/// <param name="vtxid">交易id的vector</param>
+/// <param name="txidSet">已有txid的交易哈希到索引的映射</param>
+void simulateMining(const int h, const int lastSeq, std::vector<uint256>& vtxid, std::map<uint256, int>& txidSet) {
+    auto time1 = GetTimeMillis();
+    // 生成固定大小的区块，模拟矿工挖矿得到的区块，当前固定大小为5MB
+    map<uint256, int> mapBlkTxidIndex;                         // 设置该参数为空，打包一个大小为multi_block MB的区块
+    CScript pbk;
+    pbk << 0 << OP_TRUE;
+    BlockAssembler basmMiner(Params());
+    basmMiner.addBlockWeight((multi_block - 1) * MAX_BLOCK_WEIGHT);
+    auto minerBlk = basmMiner.CreateNewBlockWithPredTxSet(pbk, umap_predTxSet_simulator[h], mapBlkTxidIndex);
+
+    // 将lastSeq之后的交易序列放入umapPredTxSet[h]
+    int end = lastSeq + 1;
+    while (end < vtxid.size()) 
+        umap_predTxSet_simulator[h].insert(vtxid[end++]);
+    // 生成预测的区块,预测区块大小限定400Mb
+    BlockAssembler basmPred(Params());
+    basmPred.addBlockWeight(400 * MAX_BLOCK_WEIGHT);
+    auto predBlk = basmPred.CreateNewBlockWithPredTxSet(pbk, umap_predTxSet_simulator[h], mapBlkTxidIndex);
+
+    // 将两次模拟挖矿的数据和预测区块写入文件
+    string file_name_miner = format("simulate_miner_%d_%d.log",h, umap_simCnt_simulator[h]);
+    string file_name_pred = format("simulate_pred_%d_%d.log", h, umap_simCnt_simulator[h]);
+    umap_simCnt_simulator[h]++;
+    thread th1(writeBlockMsg, file_name_miner, std::move(minerBlk), lastSeq + 1,false, 0);
+    thread th2(writeBlockMsg, file_name_pred, std::move(predBlk), umap_predTxSet_simulator[h].size(), true, vtxid.size() - lastSeq);
+    th1.join();
+    th2.join();
+    auto time2 = GetTimeMillis();
+    printf("simulate mining use %lld millsec\n", time2 - time1);
 }
 
 
@@ -250,6 +354,24 @@ void compareBlock(const std::shared_ptr<const CBlock>& pblock, const int h)
     thread th2(writeFile, to_string(h) + "_pred_block.log", predOs.str());
     th1.join();
     th2.join();
+
+    // 在这里测试交易生成速率对预测区块大小的影响
+    int times = 1;
+    while (testTxRate && lastIndex >= 0 && lastIndex < umap_vecPrecictTxid[h].size()) {
+        const int index = min(static_cast<int>(umap_vecPrecictTxid[h].size()), lastIndex + times * txRate);
+        const int txCnt = index - lastIndex;
+        while (lastIndex < index) {
+            predTxidSet.insert(umap_vecPrecictTxid[h][lastIndex]);
+            lastIndex++;
+        }
+        ostringstream predOstmp;
+        map<uint256, int> mapPredTxidIndex;
+        auto predBlk = createPredBlock(predOstmp, predTxidSet, mapBlkTxidIndex, mapPredTxidIndex);
+        predOstmp << "Add_tx_cnt: " << txCnt;
+        // 只是将写数据的代码放到多线程里面去做
+        thread th(writeFile, format("%d_pred_block_%d.log", h, ++times*txRate), predOstmp.str());
+        th.join();
+    }
 }
 // TODO END BY HZX
 
@@ -1102,15 +1224,6 @@ bool MemPoolAccept::PreChecks(ATMPArgs& args, Workspace& ws)
                         FormatMoney(::incrementalRelayFee.GetFee(nSize))));
         }
     }
-    //// TODO START BY HZX
-    //{
-    //    // 统计当前交易池中交易数
-    //    int height = ::ChainActive().Tip()->nHeight;
-    //    mempoolStatics(height);
-    //    adjustPredictTxList(height + 1);
-    //}
-    //// TODO END BY HZX
-
     return true;
 }
 
@@ -3932,9 +4045,17 @@ bool CChainState::AcceptBlock(const std::shared_ptr<const CBlock>& pblock, CVali
                 printf("predicted block for %d, ------current function: %s, line number: %d\n",blkHeight,  __FUNCTION__, __LINE__);
                 compareBlock(pblock, blkHeight);                  // 比较预测区块中的交易和新区块中的交易
                 umap_setPredictTxid.erase(blkHeight);             // 删除
-                printf("predicted block for %d, ------current function: %s, line number: %d\n", blkHeight, __FUNCTION__, __LINE__);
-                // umap_predictBlkLastTxHash.erase(blkHeight);       // 删除
+                
+                umap_predictBlkLastTxHash.erase(blkHeight);
                 umap_vecPrecictTxid.erase(blkHeight);             // 删除
+
+
+                // 删除这个高度模拟实验的预测数据
+                umap_setPredictTxid_simulator.erase(blkHeight); // 删除
+                umap_predictBlkLastTxHash_simulator.erase(blkHeight);
+                umap_vecPrecictTxid_simulator.erase(blkHeight); // 删除
+                umap_predTxSet_simulator.erase(blkHeight);                 // 删除
+                umap_simCnt_simulator.erase(blkHeight);                    // 删除为该高度预测的结果
                 printf("predicted block for %d, ------current function: %s, line number: %d\n", blkHeight, __FUNCTION__, __LINE__);
             } else {
                 printf("not predicted block for %d ,current function: %s, line number: %d\n", blkHeight, __FUNCTION__, __LINE__);
@@ -4028,11 +4149,19 @@ bool ProcessNewBlock(const CChainParams& chainparams, const std::shared_ptr<cons
     {
         if (!::ChainstateActive().IsInitialBlockDownload()) {
             printf("current function: %s, line number: %d\n", __FUNCTION__, __LINE__);
-            int newBlockHeight = ::ChainActive().Tip()->nHeight + 1;
+            int h = ::ChainActive().Tip()->nHeight + 1;
             // 这里采用最后一笔交易的费率预测,如果从未预测过,不会存在最后一笔交易的费率
-            if (umap_predictBlkLastTxHash.count(newBlockHeight) == 0) {
-                adjustPredictTxList(newBlockHeight);
-                // predictNextBlockTxSequence(newBlockHeight);
+            if (umap_predictBlkLastTxHash.count(h) == 0) {
+                adjustPredictTxList(h);
+            }
+
+            // 模拟实验
+            if (umap_predictBlkLastTxHash_simulator.count(h) == 0) {
+                adjustPredictTxList(umap_setPredictTxid_simulator[h], umap_vecPrecictTxid_simulator[h], umap_predictBlkLastTxHash_simulator[h], multi_block-1);
+                // 只有为当前高度第一次预测时，将预测交易放入umap_predTxSet_simulator中
+                for (const auto& txid : umap_vecPrecictTxid_simulator[h])
+                    umap_predTxSet_simulator[h].insert(txid);
+                lastSeq = umap_vecPrecictTxid_simulator[h].size()-1;
             }
         }
         printf("current function: %s, line number: %d\n", __FUNCTION__, __LINE__);

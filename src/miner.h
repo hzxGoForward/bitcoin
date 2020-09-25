@@ -20,6 +20,7 @@
 // TODO START BY HZX
 #include <set>
 #include <uint256.h>
+#include <consensus/consensus.h>
 // TODO END BY HZX
 
 class CBlockIndex;
@@ -180,7 +181,13 @@ public:
     // predTxidSet中的交易，生成一批交易,如果其中交易全部覆盖了mapBlkTxIndex中的所有交易，则退出
     void addPackageTxsWithLimit(int& nPackagesSelected, int& nDescendantsUpdated, std::set<uint256>& predTxidSet, std::map<uint256, int>& mapBlkTxidIndex) EXCLUSIVE_LOCKS_REQUIRED(mempool.cs);
     CAmount getNFee() { return nFees; }
-    void addBlockWeight(const int w) { nBlockMaxWeight += w; }
+    int add_sigop_cost = 0;                                     // 额外增加的的签名耗费
+    void addBlockWeight(const int w)
+    {
+        nBlockMaxWeight += w;
+        add_sigop_cost = (w / MAX_BLOCK_WEIGHT) * MAX_BLOCK_SIGOPS_COST;
+    }
+    
     // TODO END BY HZX
 
 private:
