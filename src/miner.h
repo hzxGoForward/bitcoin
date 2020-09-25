@@ -177,9 +177,9 @@ public:
     // TODO START BY HZX
     // 预测区块中最后一个添加的交易的费率
     double lastTxFeeRate;
-    std::unique_ptr<CBlockTemplate> CreateNewBlockWithPredTxSet(const CScript& scriptPubKeyIn, std::set<uint256>& predTxidSet, std::map<uint256, int>& mapBlkTxidIndex);
+    std::unique_ptr<CBlockTemplate> CreateNewBlockWithPredTxSet(const CScript& scriptPubKeyIn, std::set<uint256>& predTxidSet, std::map<uint256, int>& mapBlkTxidIndex,bool trunced = true);
     // predTxidSet中的交易，生成一批交易,如果其中交易全部覆盖了mapBlkTxIndex中的所有交易，则退出
-    void addPackageTxsWithLimit(int& nPackagesSelected, int& nDescendantsUpdated, std::set<uint256>& predTxidSet, std::map<uint256, int>& mapBlkTxidIndex) EXCLUSIVE_LOCKS_REQUIRED(mempool.cs);
+    void addPackageTxsWithLimit(int& nPackagesSelected, int& nDescendantsUpdated, std::set<uint256>& predTxidSet, std::map<uint256, int>& mapBlkTxidIndex, bool trunced = true) EXCLUSIVE_LOCKS_REQUIRED(mempool.cs);
     CAmount getNFee() { return nFees; }
     int add_sigop_cost = 0;                                     // 额外增加的的签名耗费
     void addBlockWeight(const int w)

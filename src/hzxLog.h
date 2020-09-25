@@ -15,7 +15,7 @@
 using namespace std;
 static int64_t lastMempoolRecordTime = 0;
 const static int64_t writeDiff = 120; // 120秒写一次
-const static string dir = "/home2/zxhu/bitcoin-0.19.0_hzx/experiment20200924/";
+const static string dir = "/home2/zxhu/bitcoin-0.19.0_hzx/experiment20200925/";
 /*
 1. 这个版本这种，收到交易后，尝试将本地不存在的交易放入交易池和预测序列中，再生成预测序列，然后查看此时生成的交易序列的准确性
 2. 修复预测区块多余交易数中出现负数的bug
@@ -31,6 +31,9 @@ const static string dir = "/home2/zxhu/bitcoin-0.19.0_hzx/experiment20200924/";
 12. 将hzxLog.h 中的static变量修改为const属性
 - . 将挖矿miner.cpp中的生成区块的函数进行了修改，使得可以生成标准区块特定倍数的交易
 - . 将交易大小限定在5MB中，每次收到6笔交易后模拟矿工挖矿,同时基于当前交易做出预测
+- . 目录改为0925
+- .  删除了生成交易时的跳过阶段
+- . 新增mempool路径存放mempool的统计信息
 */
 
 

@@ -75,7 +75,7 @@ void mempoolStatics(const int blkHeight)
     uint64_t poolsize = mempool.GetTotalTxSize(); // 所有交易的大小
     unsigned long txcnt = mempool.size();         // 交易数量
     std::string msg = now + " " + to_string(poolsize) + " " + to_string(txcnt) + " \n";
-    writeMempoolMsg(msg, to_string(blkHeight) + "_mempool.log");
+    writeMempoolMsg(msg, "mempool/"+to_string(blkHeight) + "_mempool.log");
 }
 
 /// 根据接收的交易序列,重新构建一个区块,然后将可能发送的交易发送给邻居节点
@@ -296,7 +296,7 @@ void simulateMining(const int h, const int lastSeq, std::vector<uint256>& vtxid,
     pbk << 0 << OP_TRUE;
     BlockAssembler basmMiner(Params());
     basmMiner.addBlockWeight((multi_block - 1) * MAX_BLOCK_WEIGHT);
-    auto minerBlk = basmMiner.CreateNewBlockWithPredTxSet(pbk, umap_predTxSet_simulator[h], mapBlkTxidIndex);
+    auto minerBlk = basmMiner.CreateNewBlockWithPredTxSet(pbk, umap_predTxSet_simulator[h], mapBlkTxidIndex, false);
 
     // 将lastSeq之后的交易序列放入umapPredTxSet[h]
     int end = lastSeq + 1;
@@ -305,7 +305,7 @@ void simulateMining(const int h, const int lastSeq, std::vector<uint256>& vtxid,
     // 生成预测的区块,预测区块大小限定400Mb
     BlockAssembler basmPred(Params());
     basmPred.addBlockWeight(400 * MAX_BLOCK_WEIGHT);
-    auto predBlk = basmPred.CreateNewBlockWithPredTxSet(pbk, umap_predTxSet_simulator[h], mapBlkTxidIndex);
+    auto predBlk = basmPred.CreateNewBlockWithPredTxSet(pbk, umap_predTxSet_simulator[h], mapBlkTxidIndex, false);
 
     // 将两次模拟挖矿的数据和预测区块写入文件
     string file_name_miner = format("simulate_miner_%d_%d.log",h, umap_simCnt_simulator[h]);

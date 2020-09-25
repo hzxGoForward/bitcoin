@@ -185,7 +185,7 @@ std::unique_ptr<CBlockTemplate> BlockAssembler::CreateNewBlock(const CScript& sc
 }
 
 // TODO START BY HZX
-void BlockAssembler::addPackageTxsWithLimit(int& nPackagesSelected, int& nDescendantsUpdated, std::set<uint256>& predTxidSet, std::map<uint256, int>& mapBlkTxidIndex)
+void BlockAssembler::addPackageTxsWithLimit(int& nPackagesSelected, int& nDescendantsUpdated, std::set<uint256>& predTxidSet, std::map<uint256, int>& mapBlkTxidIndex, bool trunced)
 {
     printf("current function: %s, line number: %d\n", __FUNCTION__, __LINE__);
     // mapModifiedTx will store sorted packages after they are modified
@@ -223,7 +223,7 @@ void BlockAssembler::addPackageTxsWithLimit(int& nPackagesSelected, int& nDescen
         // 如果这笔交易不在 predTxidSet 中,则跳过
         if (mi != mempool.mapTx.get<ancestor_score>().end() && predTxidSet.count(mi->GetSharedTx()->GetHash()) == 0) {
             const uint256& txid = mi->GetSharedTx()->GetHash();
-            printf("%s has been skipped\n", txid.ToString().data());
+            // printf("%s has been skipped\n", txid.ToString().data());
             ++mi;
             continue;
         }
@@ -371,8 +371,8 @@ void BlockAssembler::addPackageTxsWithLimit(int& nPackagesSelected, int& nDescen
         nDescendantsUpdated += UpdatePackagesForAdded(ancestors, mapModifiedTx);
 
         // TODO START BY HZX
-        // 如果所有交易序列已经覆盖预测交易
-        if (blkTxAddCnt >= mapBlkTxidIndex.size()) {
+        // 如果所有交易序列已经覆盖预测交易,并且需要截断
+        if (trunced && blkTxAddCnt >= mapBlkTxidIndex.size()) {
             printf("current txcnt: %d exceed limit: %d, exit!---------\n", static_cast<int>(inBlock.size()),blkTxAddCnt);
             break;
         }
@@ -387,7 +387,7 @@ void BlockAssembler::addPackageTxsWithLimit(int& nPackagesSelected, int& nDescen
 /// <param name="predTxidSet">预测序列集合</param>
 /// <param name="mapBlkTxidIndex">收到的新区快中的交易序列及其索引</param>
 /// <returns></returns>
-std::unique_ptr<CBlockTemplate> BlockAssembler::CreateNewBlockWithPredTxSet(const CScript& scriptPubKeyIn, std::set<uint256>& predTxidSet, std::map<uint256, int>& mapBlkTxidIndex)
+std::unique_ptr<CBlockTemplate> BlockAssembler::CreateNewBlockWithPredTxSet(const CScript& scriptPubKeyIn, std::set<uint256>& predTxidSet, std::map<uint256, int>& mapBlkTxidIndex, bool trunced)
 {
     int64_t nTimeStart = GetTimeMicros();
     printf("current function: %s, line number: %d\n", __FUNCTION__, __LINE__);
@@ -437,7 +437,7 @@ std::unique_ptr<CBlockTemplate> BlockAssembler::CreateNewBlockWithPredTxSet(cons
     int nPackagesSelected = 0;
     int nDescendantsUpdated = 0;
     printf("current function: %s, line number: %d\n", __FUNCTION__, __LINE__);
-    addPackageTxsWithLimit(nPackagesSelected, nDescendantsUpdated, predTxidSet, mapBlkTxidIndex);
+    addPackageTxsWithLimit(nPackagesSelected, nDescendantsUpdated, predTxidSet, mapBlkTxidIndex,trunced);
     printf("current function: %s, line number: %d\n", __FUNCTION__, __LINE__);
     int64_t nTime1 = GetTimeMicros();
 
