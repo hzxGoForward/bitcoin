@@ -274,7 +274,7 @@ void writeBlockMsg(const string& file_name, const std::unique_ptr<CBlockTemplate
     tmps << format("recv_time: %s\nblock_hash: %s\n", now.data(), blk->block.GetHash().ToString().data());
     tmps << format("mempool_tx_cnt: %d\npred_txSeq_sz: %d\nmiss_tx_cnt: %d\n", mempool.size(), predSz, 1);
     if (predBlock)
-        tmps << "mined_block\n";
+        tmps << "pred_block\n";
     else
         tmps << "dummy_recv_cnt: " << moreRecv<<"\n";  // 记录在δt内多收到的交易数
     writeFile(file_name, tmps.str());
