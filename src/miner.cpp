@@ -223,7 +223,7 @@ void BlockAssembler::addPackageTxsWithLimit(int& nPackagesSelected, int& nDescen
         // 如果这笔交易不在 predTxidSet 中,则跳过
         if (mi != mempool.mapTx.get<ancestor_score>().end() && predTxidSet.count(mi->GetSharedTx()->GetHash()) == 0) {
             const uint256& txid = mi->GetSharedTx()->GetHash();
-            printf("%s has been skipped\n", txid.ToString().data());
+            // printf("%s has been skipped\n", txid.ToString().data());
             ++mi;
             continue;
         }
