@@ -34,6 +34,7 @@ const static string dir = "/home2/zxhu/bitcoin-0.19.0_hzx/experiment20200925/";
 - . 目录改为0925
 - .  删除了生成交易时的跳过阶段
 - . 新增mempool路径存放mempool的统计信息
+- . 新增compactBlock和normalBlock路径
 */
 
 

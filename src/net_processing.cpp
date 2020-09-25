@@ -418,7 +418,7 @@ void cmpctBlkStatics(const CNode* pfrom, const CBlockIndex* pindex, const CBlock
        << " " << collision_count << " " << state << " \n";
     for (auto& p : partialBlock.collisionTxhash)
         os << p.first.ToString() + ", " + p.second.ToString() + "> \n";
-    writeCompctBlockValidation(os.str(), now.substr(0, 10) + "_compactBlockValidation.log");
+    writeCompctBlockValidation(os.str(), "compactBlock/"+ now.substr(0, 10) + "_compactBlockValidation.log");
     printf("%s:   写入压缩区块命中信息..........\n", now.data());
 }
 // TODO END BY HZX

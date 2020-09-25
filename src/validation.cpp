@@ -4038,7 +4038,7 @@ bool CChainState::AcceptBlock(const std::shared_ptr<const CBlock>& pblock, CVali
                               std::to_string(blkHeight) + "  " + std::to_string(mempooltxCnt) + "  " + std::to_string(existCnt) + "  " +
                               std::to_string(noExistCnt) + "  " + std::to_string(curtipHeight) + "\n\n";
             // printf("收到新区快:%s", msg.data());
-            writeNormalRecv(msg, time.substr(0, 10) + "_normalBlockRecv.log");
+            writeNormalRecv(msg, "normalBlock/"+time.substr(0, 10) + "_normalBlockRecv.log");
             printf("detect whether predict %d block \n", blkHeight);
             // 如果为该区块预测过交易,则比较预测准确性
             if (umap_setPredictTxid.count(blkHeight) && umap_vecPrecictTxid.count(blkHeight)) {
