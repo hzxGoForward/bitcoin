@@ -50,7 +50,7 @@ static unordered_map<int, vector<uint256>> umap_vecPrecictTxid;
 
 // TODO START BY HZX 下列代码用于模拟实验
 const static int txRate = 6;      // 假设δt是3秒，最低交易生成速率为4笔每秒，即一个δt内产生12笔交易，我们假设节点收到一半交易，即一个δt中产生6笔交易
-const static int multi_block = 5; // 区块大小的倍数限制
+const static int multi_block = 10; // 区块大小的倍数限制
 static bool testTxRate = true;     // 配置文件，如果设置为true，则测试交易产生速率对Atom协议的影响。
 static bool simulate = true;       // 是否进行模拟实验
 static int64_t lastSeq = 0;
