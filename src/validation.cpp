@@ -125,7 +125,7 @@ int getPredTxSet(const std::shared_ptr<const CBlock>& pblock, const int h, std::
         printf("can not create predTxidSet for block %d, current function: %s, line number: %d\n ", h, __FUNCTION__, __LINE__);
         return mi;
     }
-    printf("predicted block for %d, ------current function: %s, line number: %d\n", h, __FUNCTION__, __LINE__);
+    // printf("predicted block for %d, ------current function: %s, line number: %d\n", h, __FUNCTION__, __LINE__);
     // 找出pblock中交易对应的最大的索引
     for (size_t i = 1; i < pblock->vtx.size(); ++i) {
         const auto& txid = pblock->vtx[i]->GetHash();
@@ -135,7 +135,7 @@ int getPredTxSet(const std::shared_ptr<const CBlock>& pblock, const int h, std::
     }
     if (mi == -1)
         mi = umap_vecPrecictTxid[h].size();
-    printf("predicted block for %d, ------current function: %s, line number: %d\n", h, __FUNCTION__, __LINE__);
+    // printf("predicted block for %d, ------current function: %s, line number: %d\n", h, __FUNCTION__, __LINE__);
     // 将maxIndex以前的哈希值放入txidSet中,这里加法不会溢出
     for (int i = 0; i <=mi; ++i)
         predTxidSet.insert(umap_vecPrecictTxid[h][i]);
@@ -239,7 +239,7 @@ std::unique_ptr<CBlockTemplate> createPredBlock(ostringstream& tmps, std::set<ui
 /// <param name="predSz">参与区块预测的交易数量</param>
 /// <param name="predBlock">是否是预测区块</param>
 /// <param name="moreRecv">如果是预测区块时，比挖矿的区块超前收到多少交易？</param>
-void writeBlockMsg(const string& file_name, const std::unique_ptr<CBlockTemplate> blk, int predSz, bool predBlock=false, int moreRecv = 0)
+void writeBlockMsg(const string file_name, const std::unique_ptr<CBlockTemplate> blk, int predSz, bool predBlock=false, int moreRecv = 0)
 {
     ostringstream tmps;
     int i = 0;
@@ -315,8 +315,8 @@ void simulateMining(const int h, const int lastSeq, std::vector<uint256>& vtxid,
     umap_simCnt_simulator[h]++;
     thread th1(writeBlockMsg, file_name_miner, std::move(minerBlk), lastSeq + 1,false, 0);
     thread th2(writeBlockMsg, file_name_pred, std::move(predBlk), umap_predTxSet_simulator[h].size(), true, vtxid.size() - lastSeq);
-    th1.join();
-    th2.join();
+    th1.detach();
+    th2.detach();
     auto time2 = GetTimeMillis();
     printf("simulate mining use %lld millsec\n", time2 - time1);
 }

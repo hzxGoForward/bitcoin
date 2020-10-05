@@ -149,5 +149,4 @@ static void writeMempoolMsg(const string& msg, const string& filename)
     时间    交易池大小   交易数
     */
 }
-
 #endif

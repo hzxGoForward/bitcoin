@@ -2680,25 +2680,19 @@ bool static ProcessMessage(CNode* pfrom, const std::string& strCommand, CDataStr
                 umap_setPredictTxid[height + 1].emplace(std::make_pair(cur_txid, umap_setPredictTxid[height + 1].size()));
                 umap_vecPrecictTxid[height + 1].emplace_back(cur_txid);
             }
-
-            if (simulate && umap_vecPrecictTxid_simulator[height + 1].size() >= 12) {
+            
+            if (simulate) {
                 // 为模拟挖矿实验
                 const int h = height + 1;
+                printf("predicted block for %d, ------current function: %s, line number: %d\n", h, __FUNCTION__, __LINE__);
                 adjustPredictTxList(umap_setPredictTxid_simulator[h], umap_vecPrecictTxid_simulator[h], umap_predictBlkLastTxHash_simulator[h], multi_block);
                 if (umap_setPredictTxid_simulator[h].count(cur_txid) == 0) {
                     umap_setPredictTxid_simulator[h].emplace(std::make_pair(cur_txid, umap_setPredictTxid_simulator[h].size()));
                     umap_vecPrecictTxid_simulator[h].emplace_back(cur_txid);
                 }
-                // 如果收到超过6笔交易，则预测并更正
-                //if (umap_vecPrecictTxid_simulator[h].size() >= lastSeq + txRate) {
-                //    // int diff = umap_vecPrecictTxid_simulator[h].size() - lastSeq;
-                //    // 预测区块
-                //    simulateMining(height, lastSeq, umap_vecPrecictTxid_simulator[h], umap_setPredictTxid_simulator[h]);
-                //    lastSeq = umap_vecPrecictTxid_simulator[h].size() - 1;
-                //}
                 // 每1分钟预测1次
                 auto now = GetTime();
-                if (now - lastSimTime >= simInterval) {
+                if (now - lastSimTime >= simInterval && umap_vecPrecictTxid_simulator[height + 1].size() >= 3 * txRate) {
                     lastSimTime = now;
                     simulateMining(height, lastSeq, umap_vecPrecictTxid_simulator[h], umap_setPredictTxid_simulator[h]);
                     lastSeq = umap_vecPrecictTxid_simulator[h].size() - 1;
