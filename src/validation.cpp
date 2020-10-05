@@ -239,7 +239,7 @@ std::unique_ptr<CBlockTemplate> createPredBlock(ostringstream& tmps, std::set<ui
 /// <param name="predSz">参与区块预测的交易数量</param>
 /// <param name="predBlock">是否是预测区块</param>
 /// <param name="moreRecv">如果是预测区块时，比挖矿的区块超前收到多少交易？</param>
-void writeBlockMsg(const string file_name, const std::unique_ptr<CBlockTemplate> blk, int predSz, bool predBlock=false, int moreRecv = 0)
+void writeBlockMsg(const string& file_name, const std::unique_ptr<CBlockTemplate> blk, int predSz, bool predBlock=false, int moreRecv = 0)
 {
     ostringstream tmps;
     int i = 0;
@@ -315,11 +315,10 @@ void simulateMining(const int h, const int lastSeq, std::vector<uint256>& vtxid,
     umap_simCnt_simulator[h]++;
     thread th1(writeBlockMsg, file_name_miner, std::move(minerBlk), lastSeq + 1,false, 0);
     thread th2(writeBlockMsg, file_name_pred, std::move(predBlk), umap_predTxSet_simulator[h].size(), true, vtxid.size() - lastSeq);
-    th1.detach();
-    th2.detach();
+    th1.join();
+    th2.join();
     auto time2 = GetTimeMillis();
     printf("simulate mining use %lld millsec\n", time2 - time1);
- 
 }
 
 
