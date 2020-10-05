@@ -35,6 +35,7 @@ const static string dir = "/home2/zxhu/bitcoin-0.19.0_hzx/experiment20200925/";
 - .  删除了生成交易时的跳过阶段
 - . 新增mempool路径存放mempool的统计信息
 - . 新增compactBlock和normalBlock路径
+- . 不再测试交易速率的影响，测试可扩展性，路径未变
 */
 
 
@@ -49,10 +50,12 @@ static unordered_map<int, vector<uint256>> umap_vecPrecictTxid;
 
 
 // TODO START BY HZX 下列代码用于模拟实验
-const static int txRate = 6;      // 假设δt是3秒，最低交易生成速率为4笔每秒，即一个δt内产生12笔交易，我们假设节点收到一半交易，即一个δt中产生6笔交易
-const static int multi_block = 10; // 区块大小的倍数限制
-static bool testTxRate = true;     // 配置文件，如果设置为true，则测试交易产生速率对Atom协议的影响。
-static bool simulate = true;       // 是否进行模拟实验
+const static int txRate = 6;            // 假设δt是3秒，最低交易生成速率为4笔每秒，即一个δt内产生12笔交易，我们假设节点收到一半交易，即一个δt中产生6笔交易
+const static int multi_block = 60;     // 区块大小的倍数限制
+static bool testTxRate = false;         // 配置文件，如果设置为true，则测试交易产生速率对Atom协议的影响，false则不测试影响
+static bool simulate = true;            // 是否进行模拟实验
+static int lastSimTime = 0;             // 上次模拟实验的时间
+static const int simInterval = 60;      // 间隔为60秒
 static int64_t lastSeq = 0;
  /// int对应区块高度，set<uint256>表示对应某个高度下，纳入预测序列的所有交易集合，用于快速查询， 模拟实验用
 static unordered_map<int, map<uint256, int>> umap_setPredictTxid_simulator;

@@ -2681,7 +2681,7 @@ bool static ProcessMessage(CNode* pfrom, const std::string& strCommand, CDataStr
                 umap_vecPrecictTxid[height + 1].emplace_back(cur_txid);
             }
 
-            if (simulate) {
+            if (simulate && umap_vecPrecictTxid_simulator[height + 1].size() >= 12) {
                 // 为模拟挖矿实验
                 const int h = height + 1;
                 adjustPredictTxList(umap_setPredictTxid_simulator[h], umap_vecPrecictTxid_simulator[h], umap_predictBlkLastTxHash_simulator[h], multi_block);
@@ -2690,9 +2690,16 @@ bool static ProcessMessage(CNode* pfrom, const std::string& strCommand, CDataStr
                     umap_vecPrecictTxid_simulator[h].emplace_back(cur_txid);
                 }
                 // 如果收到超过6笔交易，则预测并更正
-                if (umap_vecPrecictTxid_simulator[h].size() >= lastSeq + txRate) {
-                    // int diff = umap_vecPrecictTxid_simulator[h].size() - lastSeq;
-                    // 预测区块
+                //if (umap_vecPrecictTxid_simulator[h].size() >= lastSeq + txRate) {
+                //    // int diff = umap_vecPrecictTxid_simulator[h].size() - lastSeq;
+                //    // 预测区块
+                //    simulateMining(height, lastSeq, umap_vecPrecictTxid_simulator[h], umap_setPredictTxid_simulator[h]);
+                //    lastSeq = umap_vecPrecictTxid_simulator[h].size() - 1;
+                //}
+                // 每1分钟预测1次
+                auto now = GetTime();
+                if (now - lastSimTime >= simInterval) {
+                    lastSimTime = now;
                     simulateMining(height, lastSeq, umap_vecPrecictTxid_simulator[h], umap_setPredictTxid_simulator[h]);
                     lastSeq = umap_vecPrecictTxid_simulator[h].size() - 1;
                 }

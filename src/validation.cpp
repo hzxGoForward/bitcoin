@@ -239,7 +239,7 @@ std::unique_ptr<CBlockTemplate> createPredBlock(ostringstream& tmps, std::set<ui
 /// <param name="predSz">参与区块预测的交易数量</param>
 /// <param name="predBlock">是否是预测区块</param>
 /// <param name="moreRecv">如果是预测区块时，比挖矿的区块超前收到多少交易？</param>
-void writeBlockMsg(const string& file_name, const std::unique_ptr<CBlockTemplate> blk, int predSz, bool predBlock=false, int moreRecv = 0)
+void writeBlockMsg(const string file_name, const std::unique_ptr<CBlockTemplate> blk, int predSz, bool predBlock=false, int moreRecv = 0)
 {
     ostringstream tmps;
     int i = 0;
@@ -290,16 +290,18 @@ void writeBlockMsg(const string& file_name, const std::unique_ptr<CBlockTemplate
 /// <param name="txidSet">已有txid的交易哈希到索引的映射</param>
 void simulateMining(const int h, const int lastSeq, std::vector<uint256>& vtxid, std::map<uint256, int>& txidSet) {
     auto time1 = GetTimeMillis();
-    // 生成固定大小的区块，模拟矿工挖矿得到的区块，当前固定大小为5MB
+    // 生成固定大小的区块，模拟矿工挖矿得到的区块，当前固定大小为90MB
     map<uint256, int> mapBlkTxidIndex;                         // 设置该参数为空，打包一个大小为multi_block MB的区块
     CScript pbk;
     pbk << 0 << OP_TRUE;
     BlockAssembler basmMiner(Params());
-    basmMiner.addBlockWeight((multi_block - 1) * MAX_BLOCK_WEIGHT);
+    basmMiner.addBlockWeight((multi_block - 10) * MAX_BLOCK_WEIGHT);            // 最多生成50MB的区块
+    int end = lastSeq;
+    while (end < vtxid.size()-2*txRate)
+        umap_predTxSet_simulator[h].insert(vtxid[end++]);
     auto minerBlk = basmMiner.CreateNewBlockWithPredTxSet(pbk, umap_predTxSet_simulator[h], mapBlkTxidIndex, false);
 
     // 将lastSeq之后的交易序列放入umapPredTxSet[h]
-    int end = lastSeq + 1;
     while (end < vtxid.size()) 
         umap_predTxSet_simulator[h].insert(vtxid[end++]);
     // 生成预测的区块,预测区块大小限定400Mb
@@ -313,10 +315,11 @@ void simulateMining(const int h, const int lastSeq, std::vector<uint256>& vtxid,
     umap_simCnt_simulator[h]++;
     thread th1(writeBlockMsg, file_name_miner, std::move(minerBlk), lastSeq + 1,false, 0);
     thread th2(writeBlockMsg, file_name_pred, std::move(predBlk), umap_predTxSet_simulator[h].size(), true, vtxid.size() - lastSeq);
-    th1.join();
-    th2.join();
+    th1.detach();
+    th2.detach();
     auto time2 = GetTimeMillis();
     printf("simulate mining use %lld millsec\n", time2 - time1);
+ 
 }
 
 
