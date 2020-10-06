@@ -139,7 +139,7 @@ int getPredTxSet(const std::shared_ptr<const CBlock>& pblock, const int h, std::
     // 将maxIndex以前的哈希值放入txidSet中,这里加法不会溢出
     for (int i = 0; i <=mi; ++i)
         predTxidSet.insert(umap_vecPrecictTxid[h][i]);
-    printf("predicted block for %d, ------current function: %s, line number: %d\n", h, __FUNCTION__, __LINE__);
+    // printf("predicted block for %d, ------current function: %s, line number: %d\n", h, __FUNCTION__, __LINE__);
     return mi;
 }
 
@@ -4163,7 +4163,8 @@ bool ProcessNewBlock(const CChainParams& chainparams, const std::shared_ptr<cons
                 // 只有为当前高度第一次预测时，将预测交易放入umap_predTxSet_simulator中
                 for (const auto& txid : umap_vecPrecictTxid_simulator[h])
                     umap_predTxSet_simulator[h].insert(txid);
-                lastSeq = umap_vecPrecictTxid_simulator[h].size()-1;
+                // lastSeq自动设置为1
+                lastSeq = 0;            
             }
         }
         printf("current function: %s, line number: %d\n", __FUNCTION__, __LINE__);

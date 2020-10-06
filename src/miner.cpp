@@ -187,7 +187,7 @@ std::unique_ptr<CBlockTemplate> BlockAssembler::CreateNewBlock(const CScript& sc
 // TODO START BY HZX
 void BlockAssembler::addPackageTxsWithLimit(int& nPackagesSelected, int& nDescendantsUpdated, std::set<uint256>& predTxidSet, std::map<uint256, int>& mapBlkTxidIndex, bool trunced)
 {
-    printf("current function: %s, line number: %d\n", __FUNCTION__, __LINE__);
+    printf("current function: %s, line number: %d, predTxidSet size: %llu \n", __FUNCTION__, __LINE__, predTxidSet.size());
     // mapModifiedTx will store sorted packages after they are modified
     // because some of their txs are already in the block
     indexed_modified_transaction_set mapModifiedTx;
@@ -340,7 +340,7 @@ void BlockAssembler::addPackageTxsWithLimit(int& nPackagesSelected, int& nDescen
                 mapModifiedTx.get<ancestor_score>().erase(modit);
                 failedTx.insert(iter);
             } 
-            printf("%s:%d, %s has been skipped and put into failedTx\n", __FUNCTION__, __LINE__, txid.ToString().data());
+            // printf("%s:%d, %s has been skipped and put into failedTx\n", __FUNCTION__, __LINE__, txid.ToString().data());
             continue;
         }
         // TODO END BY HZX
