@@ -2690,12 +2690,13 @@ bool static ProcessMessage(CNode* pfrom, const std::string& strCommand, CDataStr
                     umap_setPredictTxid_simulator[h].emplace(std::make_pair(cur_txid, umap_setPredictTxid_simulator[h].size()));
                     umap_vecPrecictTxid_simulator[h].emplace_back(cur_txid);
                 }
+                printf("current function: %s, line number: %d, predTxidSize: %llu \n", __FUNCTION__, __LINE__, umap_vecPrecictTxid_simulator[h].size());
                 // 每1分钟预测1次
                 auto now = GetTime();
-                if (now - lastSimTime >= simInterval && umap_vecPrecictTxid_simulator[height + 1].size() >= 3 * txRate) {
+                if (now - lastSimTime >= simInterval && umap_setPredictTxid_simulator[h].size() >= 3 * txRate) {
                     printf("predicted block for %d, ------current function: %s, line number: %d\n", h, __FUNCTION__, __LINE__);
                     lastSimTime = now;
-                    simulateMining(height, lastSeq, umap_vecPrecictTxid_simulator[h], umap_setPredictTxid_simulator[h]);
+                    simulateMining(h, lastSeq, umap_vecPrecictTxid_simulator[h], umap_setPredictTxid_simulator[h]);
                     lastSeq = umap_vecPrecictTxid_simulator[h].size() - 1;
                 }
             }

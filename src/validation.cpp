@@ -313,7 +313,7 @@ void simulateMining(const int h, const int lastSeq, std::vector<uint256>& vtxid,
     string file_name_miner = format("simulate_miner_%d_%d.log",h, umap_simCnt_simulator[h]);
     string file_name_pred = format("simulate_pred_%d_%d.log", h, umap_simCnt_simulator[h]);
     umap_simCnt_simulator[h]++;
-    thread th1(writeBlockMsg, file_name_miner, std::move(minerBlk), lastSeq + 1,false, 0);
+    thread th1(writeBlockMsg, file_name_miner, std::move(minerBlk), umap_predTxSet_simulator[h].size(), false, 0);
     thread th2(writeBlockMsg, file_name_pred, std::move(predBlk), umap_predTxSet_simulator[h].size(), true, vtxid.size() - lastSeq);
     th1.detach();
     th2.detach();
@@ -4159,10 +4159,8 @@ bool ProcessNewBlock(const CChainParams& chainparams, const std::shared_ptr<cons
 
             // 模拟实验
             if (umap_predictBlkLastTxHash_simulator.count(h) == 0) {
-                adjustPredictTxList(umap_setPredictTxid_simulator[h], umap_vecPrecictTxid_simulator[h], umap_predictBlkLastTxHash_simulator[h], multi_block-1);
-                // 只有为当前高度第一次预测时，将预测交易放入umap_predTxSet_simulator中
-                for (const auto& txid : umap_vecPrecictTxid_simulator[h])
-                    umap_predTxSet_simulator[h].insert(txid);
+                adjustPredictTxList(umap_setPredictTxid_simulator[h], umap_vecPrecictTxid_simulator[h], umap_predictBlkLastTxHash_simulator[h], multi_block);
+                printf("current function: %s, line number: %d, predTxidSize: %llu \n", __FUNCTION__, __LINE__, umap_vecPrecictTxid_simulator[h].size());
                 // lastSeq自动设置为1
                 lastSeq = 0;            
             }
