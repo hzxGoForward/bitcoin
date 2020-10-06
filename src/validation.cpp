@@ -282,13 +282,13 @@ void writeBlockMsg(const string file_name, const std::unique_ptr<CBlockTemplate>
 
 
 /// <summary>
-/// 这是一个模拟器，先生成矿工固定大小为multi_block MB的区块，然后再生成矿工的预测序列
+/// 这是一个模拟器，先生成矿工固定大小为multi_block MB的区块，然后再生成预测序列
 /// </summary>
 /// <param name="h">当前区块高度</param>
 /// <param name="lastSeq">上一次接收交易的索引</param>
 /// <param name="vtxid">交易id的vector</param>
 /// <param name="txidSet">已有txid的交易哈希到索引的映射</param>
-void simulateMining(const int h, const int lastSeq, std::vector<uint256>& vtxid, std::map<uint256, int>& txidSet) {
+void simulateMining(const int h) {
     auto time1 = GetTimeMillis();
     // 生成固定大小的区块，模拟矿工挖矿得到的区块，当前固定大小为90MB
     map<uint256, int> mapBlkTxidIndex;                         // 设置该参数为空，打包一个大小为multi_block MB的区块
@@ -296,25 +296,27 @@ void simulateMining(const int h, const int lastSeq, std::vector<uint256>& vtxid,
     pbk << 0 << OP_TRUE;
     BlockAssembler basmMiner(Params());
     basmMiner.addBlockWeight((multi_block - 10) * MAX_BLOCK_WEIGHT);            // 最多生成50MB的区块
-    int end = lastSeq;
-    while (end < vtxid.size()-2*txRate)
-        umap_predTxSet_simulator[h].insert(vtxid[end++]);
-    auto minerBlk = basmMiner.CreateNewBlockWithPredTxSet(pbk, umap_predTxSet_simulator[h], mapBlkTxidIndex, false);
-
+    int& index = umap_lastPredPos_simulator[h];
+    std::vector<uint256>& vTxid = umap_vecTxid_simulator[h];
+    std::set<uint256>& predTxidSet = umap_setTxid_simulator[h];
+    while (index < vTxid.size() - 2 * txRate)
+        predTxidSet.insert(vTxid[index++]);
+    auto minerBlk = basmMiner.CreateNewBlockWithPredTxSet(pbk, predTxidSet, mapBlkTxidIndex, false);
+    const int predSize = predTxidSet.size();
     // 将lastSeq之后的交易序列放入umapPredTxSet[h]
-    while (end < vtxid.size()) 
-        umap_predTxSet_simulator[h].insert(vtxid[end++]);
+    while (index < vTxid.size()) 
+        predTxidSet.insert(vTxid[index++]);
     // 生成预测的区块,预测区块大小限定400Mb
     BlockAssembler basmPred(Params());
     basmPred.addBlockWeight(400 * MAX_BLOCK_WEIGHT);
-    auto predBlk = basmPred.CreateNewBlockWithPredTxSet(pbk, umap_predTxSet_simulator[h], mapBlkTxidIndex, false);
+    auto predBlk = basmPred.CreateNewBlockWithPredTxSet(pbk, predTxidSet, mapBlkTxidIndex, false);
 
     // 将两次模拟挖矿的数据和预测区块写入文件
     string file_name_miner = format("simulate_miner_%d_%d.log",h, umap_simCnt_simulator[h]);
     string file_name_pred = format("simulate_pred_%d_%d.log", h, umap_simCnt_simulator[h]);
     umap_simCnt_simulator[h]++;
-    thread th1(writeBlockMsg, file_name_miner, std::move(minerBlk), umap_predTxSet_simulator[h].size(), false, 0);
-    thread th2(writeBlockMsg, file_name_pred, std::move(predBlk), umap_predTxSet_simulator[h].size(), true, vtxid.size() - lastSeq);
+    thread th1(writeBlockMsg, file_name_miner, std::move(minerBlk), predSize, false, 0);
+    thread th2(writeBlockMsg, file_name_pred, std::move(predBlk), predTxidSet.size(), true, 0);
     th1.detach();
     th2.detach();
     auto time2 = GetTimeMillis();
@@ -4046,18 +4048,7 @@ bool CChainState::AcceptBlock(const std::shared_ptr<const CBlock>& pblock, CVali
             if (umap_setPredictTxid.count(blkHeight) && umap_vecPrecictTxid.count(blkHeight)) {
                 printf("predicted block for %d, ------current function: %s, line number: %d\n",blkHeight,  __FUNCTION__, __LINE__);
                 compareBlock(pblock, blkHeight);                  // 比较预测区块中的交易和新区块中的交易
-                umap_setPredictTxid.erase(blkHeight);             // 删除
-                
-                umap_predictBlkLastTxHash.erase(blkHeight);
-                umap_vecPrecictTxid.erase(blkHeight);             // 删除
-
-
-                // 删除这个高度模拟实验的预测数据
-                umap_setPredictTxid_simulator.erase(blkHeight); // 删除
-                umap_predictBlkLastTxHash_simulator.erase(blkHeight);
-                umap_vecPrecictTxid_simulator.erase(blkHeight); // 删除
-                umap_predTxSet_simulator.erase(blkHeight);                 // 删除
-                umap_simCnt_simulator.erase(blkHeight);                    // 删除为该高度预测的结果
+                deletePredTx(blkHeight);
                 printf("predicted block for %d, ------current function: %s, line number: %d\n", blkHeight, __FUNCTION__, __LINE__);
             } else {
                 printf("not predicted block for %d ,current function: %s, line number: %d\n", blkHeight, __FUNCTION__, __LINE__);
@@ -4157,12 +4148,11 @@ bool ProcessNewBlock(const CChainParams& chainparams, const std::shared_ptr<cons
                 adjustPredictTxList(h);
             }
 
-            // 模拟实验
-            if (umap_predictBlkLastTxHash_simulator.count(h) == 0) {
-                adjustPredictTxList(umap_setPredictTxid_simulator[h], umap_vecPrecictTxid_simulator[h], umap_predictBlkLastTxHash_simulator[h], multi_block);
-                printf("current function: %s, line number: %d, predTxidSize: %llu \n", __FUNCTION__, __LINE__, umap_vecPrecictTxid_simulator[h].size());
-                // lastSeq自动设置为1
-                lastSeq = 0;            
+            // 模拟实验生成预测序列
+            if (umap_LastTxFeeRate_simulator.count(h) == 0) {
+                adjustPredictTxList(umap_mapTxidIndex_simulator[h], umap_vecTxid_simulator[h], umap_LastTxFeeRate_simulator[h], multi_block);
+                printf("current function: %s, line number: %d\n", __FUNCTION__, __LINE__);
+                printPredMsg(h);      
             }
         }
         printf("current function: %s, line number: %d\n", __FUNCTION__, __LINE__);

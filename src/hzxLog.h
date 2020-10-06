@@ -12,6 +12,7 @@
 #include <util/time.h>
 #include <string>
 #include <cstdarg>
+#include <thread>
 using namespace std;
 static int64_t lastMempoolRecordTime = 0;
 const static int64_t writeDiff = 120; // 120秒写一次
@@ -56,19 +57,18 @@ static bool testTxRate = false;         // 配置文件，如果设置为true，
 static bool simulate = true;            // 是否进行模拟实验
 static int lastSimTime = 0;             // 上次模拟实验的时间
 static const int simInterval = 60;      // 间隔为60秒
-static int64_t lastSeq = 0;
  /// int对应区块高度，set<uint256>表示对应某个高度下，纳入预测序列的所有交易集合，用于快速查询， 模拟实验用
-static unordered_map<int, map<uint256, int>> umap_setPredictTxid_simulator;
+static unordered_map<int, map<uint256, int>> umap_mapTxidIndex_simulator;
 
 /// int 对应区块高度，uint256对应首次预测区块中最后一笔交易的哈希值和添加进入预测序列时的费率， 模拟实验用
-static unordered_map<int, pair<uint256, double>> umap_predictBlkLastTxHash_simulator;
+static unordered_map<int, pair<uint256, double>> umap_LastTxFeeRate_simulator;
 
 /// int 对应区块高度，vector<uint256> 对应在这个高度下纳入预测序列的所有交易的哈希值，前面交易按交易费排序，后面按照时间排序， 模拟实验用
-static unordered_map<int, vector<uint256>> umap_vecPrecictTxid_simulator;
+static unordered_map<int, vector<uint256>> umap_vecTxid_simulator;
 
 static unordered_map<int, int> umap_simCnt_simulator;                      // 在指定高度上模拟的次数，写文件用
-
-static unordered_map<int, set<uint256>> umap_predTxSet_simulator; // 指定高度上的交易预测序列    
+static unordered_map<int, int> umap_lastPredPos_simulator;
+static unordered_map<int, set<uint256>> umap_setTxid_simulator;           // 指定高度上的交易预测序列,用于生成交易序列
 
 
 template <typename... Args>
@@ -149,4 +149,31 @@ static void writeMempoolMsg(const string& msg, const string& filename)
     时间    交易池大小   交易数
     */
 }
+
+static void printThreadID() {
+    cout << "thread id: "<< std::this_thread::get_id() << "\n";
+}
+
+static void printPredMsg(int h) {
+    printThreadID();
+    printf("predTxidSetSize: %llu, index: %d, vecTxidSize: %llu \n", umap_setTxid_simulator[h].size(), umap_lastPredPos_simulator[h], umap_vecTxid_simulator[h].size());
+}
+
+static void deletePredTx(int blkHeight)
+{
+    // 删除 正常模式的预测序列
+    umap_setPredictTxid.erase(blkHeight); // 删除
+    umap_predictBlkLastTxHash.erase(blkHeight);
+    umap_vecPrecictTxid.erase(blkHeight); // 删除
+
+    // 删除模拟实验的预测序列
+    umap_mapTxidIndex_simulator.erase(blkHeight);
+    umap_LastTxFeeRate_simulator.erase(blkHeight); // 删除
+    umap_vecTxid_simulator.erase(blkHeight);       // 删除
+    umap_simCnt_simulator.erase(blkHeight);        // 删除为该高度预测的结果
+    umap_lastPredPos_simulator.erase(blkHeight);
+    umap_setTxid_simulator.erase(blkHeight); // 删除
+}
+
+
 #endif

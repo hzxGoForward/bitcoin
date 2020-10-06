@@ -812,6 +812,6 @@ void mempoolStatics(const int blkHeight);
 void compareBlock(const std::shared_ptr<const CBlock>& pblock, const int h);
 void adjustPredictTxList(const int newBlockHeight);
 void adjustPredictTxList(std::map<uint256, int>& txidSet, std::vector<uint256>& vtxid, std::pair<uint256, double>& p, const int m=0);
-void simulateMining(const int h, const int lastSeq, std::vector<uint256>& vtxid, std::map<uint256, int>& txidSet);
+void simulateMining(const int h);
 // TODO END BY HZX
 #endif // BITCOIN_VALIDATION_H

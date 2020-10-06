@@ -2684,20 +2684,21 @@ bool static ProcessMessage(CNode* pfrom, const std::string& strCommand, CDataStr
             if (simulate) {
                 // 为模拟挖矿实验
                 const int h = height + 1;
-                
-                adjustPredictTxList(umap_setPredictTxid_simulator[h], umap_vecPrecictTxid_simulator[h], umap_predictBlkLastTxHash_simulator[h], multi_block);
-                if (umap_setPredictTxid_simulator[h].count(cur_txid) == 0) {
-                    umap_setPredictTxid_simulator[h].emplace(std::make_pair(cur_txid, umap_setPredictTxid_simulator[h].size()));
-                    umap_vecPrecictTxid_simulator[h].emplace_back(cur_txid);
+                adjustPredictTxList(umap_mapTxidIndex_simulator[h], umap_vecTxid_simulator[h], umap_LastTxFeeRate_simulator[h], multi_block);
+                if (umap_mapTxidIndex_simulator[h].count(cur_txid) == 0) {
+                    umap_mapTxidIndex_simulator[h].emplace(std::make_pair(cur_txid, umap_vecTxid_simulator[h].size()));
+                    umap_vecTxid_simulator[h].emplace_back(cur_txid);
                 }
-                printf("current function: %s, line number: %d, predTxidSize: %llu \n", __FUNCTION__, __LINE__, umap_vecPrecictTxid_simulator[h].size());
+                printf("function: %s, line: %d\n", __FUNCTION__, __LINE__);
+                printPredMsg(h);
                 // 每1分钟预测1次
                 auto now = GetTime();
-                if (now - lastSimTime >= simInterval && umap_setPredictTxid_simulator[h].size() >= 3 * txRate) {
-                    printf("predicted block for %d, ------current function: %s, line number: %d\n", h, __FUNCTION__, __LINE__);
+                if (now - lastSimTime >= simInterval && umap_vecTxid_simulator[h].size() > 2 * txRate) {
+                    printf("function: %s, line: %d\n", __FUNCTION__, __LINE__);
+                    printPredMsg(h);
+                    
+                    simulateMining(h);
                     lastSimTime = now;
-                    simulateMining(h, lastSeq, umap_vecPrecictTxid_simulator[h], umap_setPredictTxid_simulator[h]);
-                    lastSeq = umap_vecPrecictTxid_simulator[h].size() - 1;
                 }
             }
         }
