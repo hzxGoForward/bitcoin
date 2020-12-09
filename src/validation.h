@@ -807,5 +807,6 @@ inline bool IsBlockPruned(const CBlockIndex* pblockindex)
 void mempoolStatics(const int blkHeight);
 void adjustPredictTxList(const int newBlockHeight);
 void compareBlock(const std::shared_ptr<const CBlock>& pblock, const int h);
+
 // TODO END BY HZX
 #endif // BITCOIN_VALIDATION_H
