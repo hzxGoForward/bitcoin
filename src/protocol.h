@@ -1,4 +1,4 @@
-// Copyright (c) 2009-2010 Satoshi Nakamoto
+﻿// Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2019 The Bitcoin Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -238,6 +238,15 @@ extern const char *GETBLOCKTXN;
  * @since protocol version 70014 as described by BIP 152
  */
 extern const char *BLOCKTXN;
+
+
+// TODO START BY HZX
+extern const char* SENDDINO;
+extern const char* SENDDINOACK;
+extern const char* SENDDINOREJECT;
+// TODO END BY HZX
+
+
 };
 
 /* Get a vector of all valid message types (see above) */

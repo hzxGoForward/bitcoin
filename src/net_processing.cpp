@@ -1348,6 +1348,11 @@ void RelayTransaction(const uint256& txid, const CConnman& connman)
     connman.ForEachNode([&inv](CNode* pnode)
     {
         pnode->PushInventory(inv);
+        // TODO START BY HZX
+        if (pnode->dino && pnode->fInbound) {
+            pnode->AddDinoTxInfo(inv.hash);
+        }
+        // TODO END BY HZX
     });
 }
 
@@ -2136,6 +2141,10 @@ bool static ProcessMessage(CNode* pfrom, const std::string& strCommand, CDataStr
                       pfrom->nVersion.load(), pfrom->nStartingHeight,
                       pfrom->GetId(), (fLogIPs ? strprintf(", peeraddr=%s", pfrom->addr.ToString()) : ""),
                       pfrom->m_tx_relay == nullptr ? "block-relay" : "full-relay");
+            // TODO START BY HZX
+            // 向outbound节点发送SENDDINO指令
+            connman->PushMessage(pfrom, msgMaker.Make(NetMsgType::SENDDINO));
+            // TODO END BY HZX
         }
 
         if (pfrom->nVersion >= SENDHEADERS_VERSION) {
@@ -2252,6 +2261,22 @@ bool static ProcessMessage(CNode* pfrom, const std::string& strCommand, CDataStr
         return true;
     }
 
+    // TODO START BY HZX
+    if (strCommand == NetMsgType::SENDDINO) {
+        if (pfrom->fInbound && pfrom->m_tx_relay) {
+            pfrom->dino = true;
+            connman->PushMessage(pfrom, msgMaker.Make(NetMsgType::SENDDINOACK));
+            
+        }
+    }
+    if (strCommand == NetMsgType::SENDDINOACK) {
+        if (!pfrom->fInbound && pfrom->m_tx_relay) {
+            pfrom->dino = true;
+        }
+    }
+    // TODO END BY HZX
+
+
     if (strCommand == NetMsgType::INV) {
         std::vector<CInv> vInv;
         vRecv >> vInv;
@@ -2285,6 +2310,9 @@ bool static ProcessMessage(CNode* pfrom, const std::string& strCommand, CDataStr
 
             if (inv.type == MSG_TX) {
                 inv.type |= nFetchFlags;
+                if (pfrom->dino && !pfrom->fInbound) {
+                    pfrom->AddDinoTxInfo(inv.hash);
+                }
             }
 
             if (inv.type == MSG_BLOCK) {
@@ -2533,9 +2561,18 @@ bool static ProcessMessage(CNode* pfrom, const std::string& strCommand, CDataStr
         CTransactionRef ptx;
         vRecv >> ptx;
         const CTransaction& tx = *ptx;
+        
+        // TODO START BY HZX
+        // 如果这笔交易来自outboundpeer
+        if (!pfrom->fInbound && pfrom->dino) {
+            pfrom->AddDinoTxInfo(tx.GetHash());
+        }
+        // TODO END BY HZX
 
         CInv inv(MSG_TX, tx.GetHash());
-        pfrom->AddInventoryKnown(inv);
+        // 添加invalreadyknow的条件是，该节点不是和我们进行dino协议的inbound
+        if (!(pfrom->dino && pfrom->fInbound))
+            pfrom->AddInventoryKnown(inv);
 
         LOCK2(cs_main, g_cs_orphans);
 

@@ -1,4 +1,4 @@
-// Copyright (c) 2009-2010 Satoshi Nakamoto
+﻿// Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2019 The Bitcoin Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -707,6 +707,13 @@ public:
     bool fClient{false}; // set by version message
     bool m_limited_node{false}; //after BIP159, set by version message
     const bool fInbound;
+
+    // 发送给该节点或者从该节点接收的交易哈希 hzx
+    std::vector<uint256> vTxInfo;
+    std::map<uint256, std::size_t> setTxInfo;
+    bool dino{false};       // 是否激活dino协议
+    // hzx
+
     std::atomic_bool fSuccessfullyConnected{false};
     // Setting fDisconnect to true will cause the node to be disconnected the
     // next time DisconnectNodes() runs
@@ -880,6 +887,18 @@ public:
         nRefCount--;
     }
 
+    // TODO START BY HZX
+    bool AddDinoTxInfo(const uint256& txhash) {
+        if (dino) {
+            if (setTxInfo.count(txhash) == 0) {
+                setTxInfo[txhash] = vTxInfo.size();
+                vTxInfo.push_back(txhash);
+                return true;
+            }
+        }
+        return false;
+    }
+    // TODO END BY HZX
 
 
     void AddAddressKnown(const CAddress& _addr)
