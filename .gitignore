@@ -1,5 +1,5 @@
 *.tar.gz
-
+.vs/
 *.exe
 *.pdb
 src/bitcoin
