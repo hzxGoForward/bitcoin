@@ -35,7 +35,18 @@
 // TODO START BY HZX
 #include <hzxLog.h>
 #include <miner.h>
+
+/// int对应区块高度，set<uint256>表示对应某个高度下，纳入预测序列的所有交易集合，用于快速查询
+extern  std::unordered_map<int, std::map<uint256, int>> umap_setPredictTxid;
+
+/// int 对应区块高度，uint256对应首次预测区块中最后一笔交易的哈希值和添加进入预测序列时的费率
+extern std::unordered_map<int, std::pair<uint256, double>> umap_predictBlkLastTxHash;
+
+/// int 对应区块高度，vector<uint256> 对应在这个高度下纳入预测序列的所有交易的哈希值，前面交易按交易费排序，后面按照时间排序
+extern std::unordered_map<int, std::vector<uint256>> umap_vecPrecictTxid;
+
 // TODO END BY HZX
+
 
 #if defined(NDEBUG)
 # error "Bitcoin cannot be compiled without assertions."
@@ -397,10 +408,10 @@ struct CNodeState {
 };
 
 // TODO START BY HZX
-void cmpctBlkStatics(const CNode* pfrom, const CBlockIndex* pindex, const CBlockHeaderAndShortTxIDs& cmpctblock, const PartiallyDownloadedBlock& partialBlock, const string& state)
+void cmpctBlkStatics(const CNode* pfrom, const CBlockIndex* pindex, const CBlockHeaderAndShortTxIDs& cmpctblock, const PartiallyDownloadedBlock& partialBlock, const std::string& state)
 {
     // 对方发送一个压缩区块，记录之
-    string ip = pfrom->addr.ToString(); // 对方ip地址
+    std::string ip = pfrom->addr.ToString(); // 对方ip地址
     if (ip.size() < 50)
         ip.push_back(' ');
     auto now = FormatISO8601DateTime(GetTime()); // 时间
@@ -411,15 +422,16 @@ void cmpctBlkStatics(const CNode* pfrom, const CBlockIndex* pindex, const CBlock
     const size_t prefillCnt = partialBlock.PrefilledCount();          // 预填充交易数
     const size_t mempoolTxHitCnt = partialBlock.MempoolCount();       // 交易池命中数
     const size_t collision_count = partialBlock.ExtraCount();         // orphan_tx交易池中命中数
-    ostringstream os;
+    std::ostringstream os;
     os << ip << " " << now << " " << blkhash << " " << blkHeight
        << " " << sz << " " << txcnt << " "
        << prefillCnt << " " << mempoolTxHitCnt
        << " " << collision_count << " " << state << " \n";
     for (auto& p : partialBlock.collisionTxhash)
         os << p.first.ToString() + ", " + p.second.ToString() + "> \n";
-    writeCompctBlockValidation(os.str(), now.substr(0, 10) + "_compactBlockValidation.log");
-    printf("%s:   写入压缩区块命中信息..........\n", now.data());
+    auto savePath = now.substr(0, 10) + "_compactBlockValidation.log";
+    // writeCompctBlockValidation(os.str(), savePath);
+    // printf("%s:   write compress block hit infor......\n", now.data());
 }
 // TODO END BY HZX
 
@@ -2856,10 +2868,10 @@ bool static ProcessMessage(CNode* pfrom, const std::string& strCommand, CDataStr
 
                 // TODO START BY HZX
                 {
-                    if (req.indexes.empty())
-                        cmpctBlkStatics(pfrom, pindex, cmpctblock, partialBlock, "SUCCESS");
-                    else
-                        cmpctBlkStatics(pfrom, pindex, cmpctblock, partialBlock, "FAILED");
+                    //if (req.indexes.empty())
+                    //    cmpctBlkStatics(pfrom, pindex, cmpctblock, partialBlock, "SUCCESS");
+                    //else
+                    //    cmpctBlkStatics(pfrom, pindex, cmpctblock, partialBlock, "FAILED");
                 }
                 // TODO END BY HZX
 

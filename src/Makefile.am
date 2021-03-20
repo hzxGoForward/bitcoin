@@ -218,6 +218,7 @@ BITCOIN_CORE_H = \
   util/translation.h \
   util/url.h \
   util/validation.h \
+  hzxLog.h \
   validation.h \
   validationinterface.h \
   versionbits.h \
@@ -302,6 +303,7 @@ libbitcoin_server_a_SOURCES = \
   txmempool.cpp \
   ui_interface.cpp \
   validation.cpp \
+  hzxLog.cpp \
   validationinterface.cpp \
   versionbits.cpp \
   $(BITCOIN_CORE_H)

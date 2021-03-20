@@ -1,4 +1,4 @@
-// Copyright (c) 2009-2010 Satoshi Nakamoto
+﻿// Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2018 The Bitcoin Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -10,6 +10,11 @@
 #include <validationinterface.h>
 #include <consensus/params.h>
 #include <sync.h>
+// TODO START BY HZX
+#include <hzxLog.h>
+#include <miner.h>
+
+// TODO END BY HZX
 
 extern CCriticalSection cs_main;
 
