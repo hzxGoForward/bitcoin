@@ -3931,45 +3931,45 @@ bool CChainState::AcceptBlock(const std::shared_ptr<const CBlock>& pblock, CVali
 
     // TODO START BY HZX
     // 如果处于非下载状态,并且当前区块是最长合法的区块,判断该区块中交易,本地交易池已有的比例
-    {
-        // printf("current function: %s, line number: %d\n", __FUNCTION__, __LINE__);
-        // 不处于下载状态,收到新区快比本地区块的高度之差不超过2
-        if (!IsInitialBlockDownload() && pindex->nHeight - m_chain.Tip()->nHeight <=2 ) {
-            size_t existCnt = 0;
-            for (auto& tx : pblock->vtx) {
-                if (mempool.exists(tx->GetHash()))
-                    existCnt++;
-            }
-            int curtipHeight = m_chain.Tip()->nHeight;
-            size_t noExistCnt = pblock->vtx.size() - existCnt;
-            auto blkhash = pblock->GetBlockHeader().GetHash();
-            auto blkHeight = pindex->nHeight;
-            auto mempooltxCnt = mempool.size();
-            std::string time = FormatISO8601DateTime(GetTime());
-            std::string msg = time + "  " + blkhash.ToString() + "  " +
-                              std::to_string(blkHeight) + "  " + std::to_string(mempooltxCnt) + "  " + std::to_string(existCnt) + "  " +
-                              std::to_string(noExistCnt) + "  " + std::to_string(curtipHeight) + "\n\n";
-            // printf("收到新区快:%s", msg.data());
-            // writeNormalRecv(msg, time.substr(0, 10) + "_normalBlockRecv.log");
-            printf("detect whether predict %d block \n", blkHeight);
-            // 如果为该区块预测过交易,则比较预测准确性
-            if (umap_setPredictTxid.count(blkHeight) && umap_vecPrecictTxid.count(blkHeight)) {
-                printf("predicted block for %d, ------current function: %s, line number: %d\n",blkHeight,  __FUNCTION__, __LINE__);
-                compareBlock(pblock, blkHeight);                  // 比较预测区块中的交易和新区块中的交易
-                umap_setPredictTxid.erase(blkHeight);             // 删除
-                printf("predicted block for %d, ------current function: %s, line number: %d\n", blkHeight, __FUNCTION__, __LINE__);
-                // umap_predictBlkLastTxHash.erase(blkHeight);       // 删除
-                umap_vecPrecictTxid.erase(blkHeight);             // 删除
-                printf("predicted block for %d, ------current function: %s, line number: %d\n", blkHeight, __FUNCTION__, __LINE__);
-            } else {
-                printf("not predicted block for %d ,current function: %s, line number: %d\n", blkHeight, __FUNCTION__, __LINE__);
-            }
-        }
-        
-    }
+    //{
+    //    // // // printf("current function: %s, line number: %d\n", __FUNCTION__, __LINE__);
+    //    // 不处于下载状态,收到新区快比本地区块的高度之差不超过2
+    //    if (!IsInitialBlockDownload() && pindex->nHeight - m_chain.Tip()->nHeight <=2 ) {
+    //        size_t existCnt = 0;
+    //        for (auto& tx : pblock->vtx) {
+    //            if (mempool.exists(tx->GetHash()))
+    //                existCnt++;
+    //        }
+    //        int curtipHeight = m_chain.Tip()->nHeight;
+    //        size_t noExistCnt = pblock->vtx.size() - existCnt;
+    //        auto blkhash = pblock->GetBlockHeader().GetHash();
+    //        auto blkHeight = pindex->nHeight;
+    //        auto mempooltxCnt = mempool.size();
+    //        std::string time = FormatISO8601DateTime(GetTime());
+    //        std::string msg = time + "  " + blkhash.ToString() + "  " +
+    //                          std::to_string(blkHeight) + "  " + std::to_string(mempooltxCnt) + "  " + std::to_string(existCnt) + "  " +
+    //                          std::to_string(noExistCnt) + "  " + std::to_string(curtipHeight) + "\n\n";
+    //        // printf("收到新区快:%s", msg.data());
+    //        // writeNormalRecv(msg, time.substr(0, 10) + "_normalBlockRecv.log");
+    //        printf("detect whether predict %d block \n", blkHeight);
+    //        // 如果为该区块预测过交易,则比较预测准确性
+    //        if (umap_setPredictTxid.count(blkHeight) && umap_vecPrecictTxid.count(blkHeight)) {
+    //            printf("predicted block for %d, ------current function: %s, line number: %d\n",blkHeight,  __FUNCTION__, __LINE__);
+    //            compareBlock(pblock, blkHeight);                  // 比较预测区块中的交易和新区块中的交易
+    //            umap_setPredictTxid.erase(blkHeight);             // 删除
+    //            printf("predicted block for %d, ------current function: %s, line number: %d\n", blkHeight, __FUNCTION__, __LINE__);
+    //            // umap_predictBlkLastTxHash.erase(blkHeight);       // 删除
+    //            umap_vecPrecictTxid.erase(blkHeight);             // 删除
+    //            printf("predicted block for %d, ------current function: %s, line number: %d\n", blkHeight, __FUNCTION__, __LINE__);
+    //        } else {
+    //            printf("not predicted block for %d ,current function: %s, line number: %d\n", blkHeight, __FUNCTION__, __LINE__);
+    //        }
+    //    }
+    //    
+    //}
     // TODO END BY HZX
 
-    printf("current function: %s, line number: %d\n", __FUNCTION__, __LINE__);
+    // // printf("current function: %s, line number: %d\n", __FUNCTION__, __LINE__);
     if (!fRequested) {  // If we didn't ask for it:
         if (pindex->nTx != 0) return true;    // This is a previously-processed block that was pruned
         if (!fHasMoreOrSameWork) return true; // Don't process less-work chains
@@ -3981,7 +3981,7 @@ bool CChainState::AcceptBlock(const std::shared_ptr<const CBlock>& pblock, CVali
         // request; don't process these.
         if (pindex->nChainWork < nMinimumChainWork) return true;
     }
-    printf("current function: %s, line number: %d\n", __FUNCTION__, __LINE__);
+    // // printf("current function: %s, line number: %d\n", __FUNCTION__, __LINE__);
     if (!CheckBlock(block, state, chainparams.GetConsensus()) ||
         !ContextualCheckBlock(block, state, chainparams.GetConsensus(), pindex->pprev)) {
         assert(IsBlockReason(state.GetReason()));
@@ -3991,12 +3991,12 @@ bool CChainState::AcceptBlock(const std::shared_ptr<const CBlock>& pblock, CVali
         }
         return error("%s: %s", __func__, FormatStateMessage(state));
     }
-    printf("current function: %s, line number: %d\n", __FUNCTION__, __LINE__);
+    // // printf("current function: %s, line number: %d\n", __FUNCTION__, __LINE__);
     // Header is valid/has work, merkle tree and segwit merkle tree are good...RELAY NOW
     // (but if it does not build on our best tip, let the SendMessages loop relay it)
     if (!IsInitialBlockDownload() && m_chain.Tip() == pindex->pprev)
         GetMainSignals().NewPoWValidBlock(pindex, pblock);
-    printf("current function: %s, line number: %d\n", __FUNCTION__, __LINE__);
+    // // printf("current function: %s, line number: %d\n", __FUNCTION__, __LINE__);
     // Write block to history file
     if (fNewBlock) *fNewBlock = true;
     try {
@@ -4006,15 +4006,15 @@ bool CChainState::AcceptBlock(const std::shared_ptr<const CBlock>& pblock, CVali
             return false;
         }
         ReceivedBlockTransactions(block, pindex, blockPos, chainparams.GetConsensus());
-        printf("current function: %s, line number: %d\n", __FUNCTION__, __LINE__);
+        // // printf("current function: %s, line number: %d\n", __FUNCTION__, __LINE__);
     } catch (const std::runtime_error& e) {
         return AbortNode(state, std::string("System error: ") + e.what());
     }
 
     FlushStateToDisk(chainparams, state, FlushStateMode::NONE);
-    printf("current function: %s, line number: %d\n", __FUNCTION__, __LINE__);
+    // // printf("current function: %s, line number: %d\n", __FUNCTION__, __LINE__);
     CheckBlockIndex(chainparams.GetConsensus());
-    printf("current function: %s, line number: %d\n", __FUNCTION__, __LINE__);
+    // // printf("current function: %s, line number: %d\n", __FUNCTION__, __LINE__);
     return true;
 }
 
@@ -4050,18 +4050,18 @@ bool ProcessNewBlock(const CChainParams& chainparams, const std::shared_ptr<cons
     if (!::ChainstateActive().ActivateBestChain(state, chainparams, pblock))
         return error("%s: ActivateBestChain failed (%s)", __func__, FormatStateMessage(state));
     // TODO START BY HZX
-    {
-        if (!::ChainstateActive().IsInitialBlockDownload()) {
-            printf("current function: %s, line number: %d\n", __FUNCTION__, __LINE__);
-            int newBlockHeight = ::ChainActive().Tip()->nHeight + 1;
-            // 这里采用最后一笔交易的费率预测,如果从未预测过,不会存在最后一笔交易的费率
-            if (umap_predictBlkLastTxHash.count(newBlockHeight) == 0) {
-                adjustPredictTxList(newBlockHeight);
-                // predictNextBlockTxSequence(newBlockHeight);
-            }
-        }
-        printf("current function: %s, line number: %d\n", __FUNCTION__, __LINE__);
-    }
+    //{
+    //    if (!::ChainstateActive().IsInitialBlockDownload()) {
+    //        // // printf("current function: %s, line number: %d\n", __FUNCTION__, __LINE__);
+    //        int newBlockHeight = ::ChainActive().Tip()->nHeight + 1;
+    //        // 这里采用最后一笔交易的费率预测,如果从未预测过,不会存在最后一笔交易的费率
+    //        if (umap_predictBlkLastTxHash.count(newBlockHeight) == 0) {
+    //            adjustPredictTxList(newBlockHeight);
+    //            // predictNextBlockTxSequence(newBlockHeight);
+    //        }
+    //    }
+    //    // // printf("current function: %s, line number: %d\n", __FUNCTION__, __LINE__);
+    //}
     // TODO END BY HZX
 
     return true;

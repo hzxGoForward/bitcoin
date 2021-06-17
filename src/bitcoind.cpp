@@ -184,7 +184,7 @@ int main(int argc, char* argv[])
         printf("            ***\n");
         printf("             *\n");
         auto now = FormatISO8601DateTime(GetTime()); // 时间
-        printf("%s:  Bitcoin Modified by HZX \n", now.data());
+        printf("%s:  Bitcoin Modified by HZX 20210618 \n", now.data());
     }
     // TODO END BY HZX
 #ifdef WIN32

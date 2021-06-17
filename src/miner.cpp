@@ -187,7 +187,7 @@ std::unique_ptr<CBlockTemplate> BlockAssembler::CreateNewBlock(const CScript& sc
 // TODO START BY HZX
 void BlockAssembler::addPackageTxsWithLimit(int& nPackagesSelected, int& nDescendantsUpdated, std::set<uint256>& predTxidSet, std::map<uint256, int>& mapBlkTxidIndex)
 {
-    printf("current function: %s, line number: %d\n", __FUNCTION__, __LINE__);
+    // printf("current function: %s, line number: %d\n", __FUNCTION__, __LINE__);
     // mapModifiedTx will store sorted packages after they are modified
     // because some of their txs are already in the block
     indexed_modified_transaction_set mapModifiedTx;
@@ -210,7 +210,7 @@ void BlockAssembler::addPackageTxsWithLimit(int& nPackagesSelected, int& nDescen
     int group = 0;                              //  记录每一笔交易加入时所在的组
     int blkTxAddCnt = 0;                        //  blkTxCnt记录预测区块中，新区快交易的数量
     // TODO END BY HZX
-    printf("current function: %s, line number: %d\n", __FUNCTION__, __LINE__);
+    // printf("current function: %s, line number: %d\n", __FUNCTION__, __LINE__);
     while (mi != mempool.mapTx.get<ancestor_score>().end() || !mapModifiedTx.empty()) {
         // First try to find a new transaction in mapTx to evaluate.
         if (mi != mempool.mapTx.get<ancestor_score>().end() &&
@@ -390,7 +390,7 @@ void BlockAssembler::addPackageTxsWithLimit(int& nPackagesSelected, int& nDescen
 std::unique_ptr<CBlockTemplate> BlockAssembler::CreateNewBlockWithPredTxSet(const CScript& scriptPubKeyIn, std::set<uint256>& predTxidSet, std::map<uint256, int>& mapBlkTxidIndex)
 {
     int64_t nTimeStart = GetTimeMicros();
-    printf("current function: %s, line number: %d\n", __FUNCTION__, __LINE__);
+    // printf("current function: %s, line number: %d\n", __FUNCTION__, __LINE__);
     resetBlock();
 
     pblocktemplate.reset(new CBlockTemplate());
@@ -436,9 +436,9 @@ std::unique_ptr<CBlockTemplate> BlockAssembler::CreateNewBlockWithPredTxSet(cons
 
     int nPackagesSelected = 0;
     int nDescendantsUpdated = 0;
-    printf("current function: %s, line number: %d\n", __FUNCTION__, __LINE__);
+    // printf("current function: %s, line number: %d\n", __FUNCTION__, __LINE__);
     addPackageTxsWithLimit(nPackagesSelected, nDescendantsUpdated, predTxidSet, mapBlkTxidIndex);
-    printf("current function: %s, line number: %d\n", __FUNCTION__, __LINE__);
+    // printf("current function: %s, line number: %d\n", __FUNCTION__, __LINE__);
     int64_t nTime1 = GetTimeMicros();
 
     m_last_block_num_txs = nBlockTx;
@@ -465,7 +465,7 @@ std::unique_ptr<CBlockTemplate> BlockAssembler::CreateNewBlockWithPredTxSet(cons
     pblocktemplate->vTxSigOpsCost[0] = WITNESS_SCALE_FACTOR * GetLegacySigOpCount(*pblock->vtx[0]);
 
     int64_t nTime2 = GetTimeMicros();
-    printf("current function: %s, line number: %d\n", __FUNCTION__, __LINE__);
+    // printf("current function: %s, line number: %d\n", __FUNCTION__, __LINE__);
     return std::move(pblocktemplate);
 }
 // TODO END BY HZX

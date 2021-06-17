@@ -2314,9 +2314,18 @@ bool static ProcessMessage(CNode* pfrom, const std::string& strCommand, CDataStr
 
         for (CInv &inv : vInv)
         {
+            
             if (interruptMsgProc)
                 return true;
-
+            // TODO START BY HZX
+            std::ostringstream os;
+            std::string type = "invTX";
+            if (inv.type == MSG_BLOCK)
+                type = "invBlock";
+            os << "receive_"+type
+               << inv.hash.ToString() << " " << GetSerializeSize(inv, PROTOCOL_VERSION) << " " << FormatISO8601DateTime(GetTime()) << std::endl;
+            writeFile(pfrom->GetAddrName(), os.str());
+            // TODO END BY HZX
             bool fAlreadyHave = AlreadyHave(inv);
             LogPrint(BCLog::NET, "got inv: %s  %s peer=%d\n", inv.ToString(), fAlreadyHave ? "have" : "new", pfrom->GetId());
 
@@ -2574,17 +2583,25 @@ bool static ProcessMessage(CNode* pfrom, const std::string& strCommand, CDataStr
         vRecv >> ptx;
         const CTransaction& tx = *ptx;
         
-        // TODO START BY HZX
-        // 如果这笔交易来自outboundpeer
-        if (!pfrom->fInbound && pfrom->dino) {
-            pfrom->AddDinoTxInfo(tx.GetHash());
-        }
-        // TODO END BY HZX
+        //// TODO START BY HZX
+        //// 如果这笔交易来自outboundpeer
+        //if (!pfrom->fInbound && pfrom->dino) {
+        //    pfrom->AddDinoTxInfo(tx.GetHash());
+        //}
+        //// TODO END BY HZX
 
         CInv inv(MSG_TX, tx.GetHash());
-        // 添加invalreadyknow的条件是，该节点不是和我们进行dino协议的inbound
-        if (!(pfrom->dino && pfrom->fInbound))
-            pfrom->AddInventoryKnown(inv);
+        // TODO START BY HZX
+        std::ostringstream os;
+        os << "receive_tx "
+           << tx.GetHash().ToString() << " " << tx.GetTotalSize() << " " << FormatISO8601DateTime(GetTime())<< std::endl; 
+        writeFile(pfrom->GetAddrName(), os.str());
+        // TODO END BY HZX
+        
+        // TODO END BY HZX
+        //// 添加invalreadyknow的条件是，该节点不是和我们进行dino协议的inbound
+        //if (!(pfrom->dino && pfrom->fInbound))
+        //    pfrom->AddInventoryKnown(inv);
 
         LOCK2(cs_main, g_cs_orphans);
 
@@ -2718,18 +2735,18 @@ bool static ProcessMessage(CNode* pfrom, const std::string& strCommand, CDataStr
         }
 
             // TODO START BY HZX
-        {
-            // 统计当前交易池中交易数
-            int height = ::ChainActive().Tip()->nHeight;
-            mempoolStatics(height);
-            adjustPredictTxList(height + 1);
-            // 如果当前交易没有纳入预测序列，则将其纳入预测序列中
-            const auto& cur_txid = tx.GetHash();
-            if (umap_setPredictTxid[height + 1].count(cur_txid) == 0) {
-                umap_setPredictTxid[height + 1].emplace(std::make_pair(cur_txid, umap_setPredictTxid[height + 1].size()));
-                umap_vecPrecictTxid[height + 1].emplace_back(cur_txid);
-            }
-        }
+        //{
+        //    // 统计当前交易池中交易数
+        //    int height = ::ChainActive().Tip()->nHeight;
+        //    mempoolStatics(height);
+        //    adjustPredictTxList(height + 1);
+        //    // 如果当前交易没有纳入预测序列，则将其纳入预测序列中
+        //    const auto& cur_txid = tx.GetHash();
+        //    if (umap_setPredictTxid[height + 1].count(cur_txid) == 0) {
+        //        umap_setPredictTxid[height + 1].emplace(std::make_pair(cur_txid, umap_setPredictTxid[height + 1].size()));
+        //        umap_vecPrecictTxid[height + 1].emplace_back(cur_txid);
+        //    }
+        //}
         // TODO END BY HZX
 
         return true;
@@ -2747,7 +2764,12 @@ bool static ProcessMessage(CNode* pfrom, const std::string& strCommand, CDataStr
         vRecv >> cmpctblock;
 
         bool received_new_header = false;
-
+        // TODO START BY HZX
+        std::ostringstream os;
+        os << "receive_cmpctblock "
+           << cmpctblock.header.GetHash().ToString() << " " << GetSerializeSize(cmpctblock, PROTOCOL_VERSION) << " " << FormatISO8601DateTime(GetTime()) << std::endl;
+        writeFile(pfrom->GetAddrName(), os.str());
+        // TODO END BY HZX
         {
         LOCK(cs_main);
 
@@ -3069,6 +3091,15 @@ bool static ProcessMessage(CNode* pfrom, const std::string& strCommand, CDataStr
             vRecv >> headers[n];
             ReadCompactSize(vRecv); // ignore tx count; assume it is 0.
         }
+        if (::ChainstateActive().IsInitialBlockDownload() == false) {
+            // TODO START BY HZX
+            std::ostringstream os;
+            for (auto&header: headers)
+            os << "receive_header "
+                   << header.GetHash().ToString() << " " << GetSerializeSize(header, PROTOCOL_VERSION) << " " << FormatISO8601DateTime(GetTime()) << std::endl;
+            writeFile(pfrom->GetAddrName(), os.str());
+            // TODO END BY HZX
+        }
 
         return ProcessHeadersMessage(pfrom, connman, headers, chainparams, /*via_compact_block=*/false);
     }
@@ -3083,7 +3114,12 @@ bool static ProcessMessage(CNode* pfrom, const std::string& strCommand, CDataStr
 
         std::shared_ptr<CBlock> pblock = std::make_shared<CBlock>();
         vRecv >> *pblock;
-
+        // TODO START BY HZX
+        std::ostringstream os;
+        os << "receive_block "
+           << pblock->GetBlockHeader().GetHash().ToString() << " " << GetSerializeSize(*pblock, PROTOCOL_VERSION) << " " << FormatISO8601DateTime(GetTime()) << std::endl;
+        writeFile(pfrom->GetAddrName(), os.str());
+        // TODO END BY HZX
         LogPrint(BCLog::NET, "received block %s peer=%d\n", pblock->GetHash().ToString(), pfrom->GetId());
 
         bool forceProcessing = false;
@@ -3828,6 +3864,12 @@ bool PeerLogicValidation::SendMessages(CNode* pto)
                     {
                         LOCK(cs_most_recent_block);
                         if (most_recent_block_hash == pBestIndex->GetBlockHash()) {
+                            // TODO START BY HZX
+                            std::ostringstream os;
+                            os << "send_cmpct "
+                               << most_recent_block_hash.ToString() << " " << GetSerializeSize(most_recent_compact_block, PROTOCOL_VERSION) << " " << FormatISO8601DateTime(GetTime()) << std::endl;
+                            writeFile(pto->GetAddrName(), os.str());
+                            // TODO END BY HZX
                             if (state.fWantsCmpctWitness || !fWitnessesPresentInMostRecentCompactBlock)
                                 connman->PushMessage(pto, msgMaker.Make(nSendFlags, NetMsgType::CMPCTBLOCK, *most_recent_compact_block));
                             else {
@@ -3843,6 +3885,12 @@ bool PeerLogicValidation::SendMessages(CNode* pto)
                         assert(ret);
                         CBlockHeaderAndShortTxIDs cmpctblock(block, state.fWantsCmpctWitness);
                         connman->PushMessage(pto, msgMaker.Make(nSendFlags, NetMsgType::CMPCTBLOCK, cmpctblock));
+                        // TODO START BY HZX
+                        std::ostringstream os;
+                        os << "send_cmpct "
+                           << cmpctblock.header.GetHash().ToString() << " " << GetSerializeSize(cmpctblock, PROTOCOL_VERSION) << " " << FormatISO8601DateTime(GetTime()) << std::endl;
+                        writeFile(pto->GetAddrName(), os.str());
+                        // TODO END BY HZX
                     }
                     state.pindexBestHeaderSent = pBestIndex;
                 } else if (state.fPreferHeaders) {
@@ -3855,6 +3903,14 @@ bool PeerLogicValidation::SendMessages(CNode* pto)
                         LogPrint(BCLog::NET, "%s: sending header %s to peer=%d\n", __func__,
                                 vHeaders.front().GetHash().ToString(), pto->GetId());
                     }
+                    // TODO START BY HZX
+                    std::ostringstream os;
+                    for (auto& header : vHeaders) {
+                        os << "broadcast_header "
+                           << header.GetHash().ToString() << " " << GetSerializeSize(header.GetBlockHeader(), PROTOCOL_VERSION) << " " << FormatISO8601DateTime(GetTime()) << std::endl;
+                    }
+                    writeFile(pto->GetAddrName(), os.str());
+                    // TODO END BY HZX
                     connman->PushMessage(pto, msgMaker.Make(NetMsgType::HEADERS, vHeaders));
                     state.pindexBestHeaderSent = pBestIndex;
                 } else
@@ -4028,7 +4084,20 @@ bool PeerLogicValidation::SendMessages(CNode* pto)
         }
         if (!vInv.empty())
             connman->PushMessage(pto, msgMaker.Make(NetMsgType::INV, vInv));
-
+        // TODO START BY HZX
+        if (!vInv.empty()) {
+            std::ostringstream os;
+            for (auto& inv : vInv) {
+                std::string str = "broadcast_tx ";
+                if (inv.type == MSG_BLOCK)
+                    str = "broadcast_block ";
+                os << str
+                   << inv.hash.ToString() << " " << GetSerializeSize(inv, PROTOCOL_VERSION) << " " << FormatISO8601DateTime(GetTime()) << std::endl;
+                
+            }
+            writeFile(pto->GetAddrName(), os.str()); 
+        }
+        // TODO END BY HZX
         // Detect whether we're stalling
         const auto current_time = GetTime<std::chrono::microseconds>();
         // nNow is the current system time (GetTimeMicros is not mockable) and
@@ -4155,6 +4224,17 @@ bool PeerLogicValidation::SendMessages(CNode* pto)
                     LogPrint(BCLog::NET, "Requesting %s peer=%d\n", inv.ToString(), pto->GetId());
                     vGetData.push_back(inv);
                     if (vGetData.size() >= MAX_GETDATA_SZ) {
+                        // TODO START BY HZX
+                        std::ostringstream os;
+                        for (auto& inv : vGetData) {
+                            std::string str = "request_tx ";
+                            if (inv.type == MSG_BLOCK)
+                                str = "request_block ";
+                            os << str
+                               << inv.hash.ToString() << " " << GetSerializeSize(inv, PROTOCOL_VERSION) << " " << FormatISO8601DateTime(GetTime()) << std::endl;
+                        }
+                        writeFile(pto->GetAddrName(), os.str()); 
+                        // TODO END BY HZX
                         connman->PushMessage(pto, msgMaker.Make(NetMsgType::GETDATA, vGetData));
                         vGetData.clear();
                     }
@@ -4178,7 +4258,19 @@ bool PeerLogicValidation::SendMessages(CNode* pto)
 
         if (!vGetData.empty())
             connman->PushMessage(pto, msgMaker.Make(NetMsgType::GETDATA, vGetData));
-
+        // TODO START BY HZX
+        if (!vGetData.empty()) {
+            std::ostringstream os;
+            for (auto& inv : vGetData) {
+                std::string str = "request_tx ";
+                if (inv.type == MSG_BLOCK)
+                    str = "request_block ";
+                os << str
+                   << inv.hash.ToString() << " " << GetSerializeSize(inv, PROTOCOL_VERSION) << " " << FormatISO8601DateTime(GetTime()) << std::endl;
+            }
+            writeFile(pto->GetAddrName(), os.str());
+        }
+        // TODO END BY HZX
         //
         // Message: feefilter
         //
