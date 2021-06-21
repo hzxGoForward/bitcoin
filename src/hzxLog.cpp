@@ -18,7 +18,7 @@ std::unordered_map<int, std::vector<uint256>> umap_vecPrecictTxid;
 
 static int64_t writeDiff = 120; // 120秒写一次
 static int64_t lastMempoolRecordTime = 0;
-static std::string dir = "/home2/zxhu/bitcoin-0.19.0_hzx/experiment20210117/";
+static std::string dir = "/home2/zxhu/bitcoin-0.19.0_hzx/experiment20210621/";
 
 void writeFile(const std::string& filename, const std::string& msg)
 {
@@ -33,7 +33,7 @@ void writeFile(const std::string& filename, const std::string& msg)
     } else {
         printf("打开文件失败, 文件名：%s \n", filepath.data());
     }
-    printf("成功写入...%s \n", filepath.data());
+    // printf("成功写入...%s \n", filepath.data());
 }
 
 
